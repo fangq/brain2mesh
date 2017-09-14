@@ -9,6 +9,9 @@ function [node2,elem2,face2] = brain2mesh(seg,res,wh,options,maxvol,ratio)
 %
 % input:
 %      seg: a 4-D containing the volumetric segmented information
+%           If size(seg,4) == 5: WM(1), GM(2), CSF(3), Bone(4), Scalp(5)
+%           If size(seg,4) == 4: WM(1), GM(2), CSF(3), Scalp(4)
+%           If size(seg,4) == 3: WM(1), GM(2), CSF(3)
 %      res: default is 1, indicates the length of a voxel in mm.
 %             e.g. if MRI has a 0.5x0.5x0.5 mm^3 resolution, use 0.5%
 %      options: (optional) radius of the Delaunay sphere (element size)
@@ -23,15 +26,21 @@ function [node2,elem2,face2] = brain2mesh(seg,res,wh,options,maxvol,ratio)
 %      elem: output, element list of the tetrahedral mesh
 %      face: output, mesh surface element list of the tetrahedral mesh 
 %             the last column denotes the boundary ID
+%
+% Methodology behind this function is presented in:
+% Anh Phong Tran and Qianqian Fang, "Fast and high-quality tetrahedral mesh generation \
+% from neuroanatomical scans,". In: arXiv pre-print (August 2017). arXiv:1708.08954v1 [physics.med-ph]
+%
 
 
+%% Handling the inputs
 if nargin >= 2
     options = []; maxvol = []; ratio = 1.414; wh = 0;
 elseif nargin >=3
     maxvol = []; ratio = 1.414; options = [];
 elseif nargin >= 4
     ratio = 1.414; maxvol = [];
-elseif narging >= 5
+elseif nargin >= 5
     ratio = 1.414;
 else
     error('At least two inputs are required');
@@ -65,6 +74,8 @@ else
     end
 end
 
+%% Pre-processing steps to create separations between the tissues in the
+%% volume space
 dim = size(seg);
 seg(:,:,:,1) = imfill(seg(:,:,:,1),'holes');
 p_wm = seg(:,:,:,1);
@@ -74,7 +85,6 @@ p_pial = imfill(p_pial,'holes');
 p_csf = p_pial+seg(:,:,:,3);
 p_csf(p_csf>1) = 1;
 p_csf = max(p_csf,max_filter(p_pial,3,1));
-
 if dim_seg > 4
     p_bone = p_csf + seg(:,:,:,4);
     p_bone(p_bone>1) = 1;
@@ -90,6 +100,8 @@ elseif dim_seg >3
     p_skin = max(p_skin,max_filter(p_bone,3,1));
 end
 
+%% Grayscale/Binary extractions of the surface meshes for the different
+%% tissues
 [wm_n,wm_f] = v2s(p_wm,THRESH,opt(1),'cgalsurf');
 [pial_n,pial_f] = v2s(p_pial,THRESH,opt(2),'cgalsurf');
 [csf_n,csf_f] = v2s(p_csf,THRESH,opt(3),'cgalsurf');
@@ -99,16 +111,21 @@ end
 if dim_seg > 3
     [skin_n,skin_f] = v2s(p_skin,THRESH,opt(5),'cgalsurf');
 end
-
 if dim_seg > 4
     ISO2MESH_TETGENOPT = '-A';
-    [bone_n,el_bone] = surf2mesh(bone_n,bone_f,[],[],1.0,30,[],[]);
+    [bone_n,el_bone] = surf2mesh(bone_n,bone_f,[],[],1.0,30,[],[],0,'tetgen1.5');
     [bone_f] = volface(el_bone(:,1:4));
     bone_f=removedupelem(bone_f);
     [bone_n,bone_f]=removeisolatednode(bone_n,bone_f);
 end
 
+
+%% Main loop for the meshing pipeline to combine the individual surface
+%% meshes or each of the tissues and to generate the detailed 3D tetrahedral
+%% mesh of the brain/head
 for w = 1:2
+    %% If the first pass fails, a second pass is called using the decoupled function
+    %% to eliminate intersections between surface meshes
     if (w==2) && (exist('label_elem'))
         continue;
     end
@@ -127,6 +144,7 @@ for w = 1:2
         [final_n,final_f] = surfboolean(final_n,final_f,'resolve',skin_n,skin_f);
     end
     
+    %% If the whole head option is deactivated, the cut is made at the base of the brain using a box cutting
     if (wh == 0)
         dim2 = min(csf_n);
         ISO2MESH_TETGENOPT = '-A';
@@ -135,9 +153,11 @@ for w = 1:2
         [final_n,final_f] = surfboolean(no,f(:,[1 3 2]),'first',final_n,final_f);
     end
     
+    %% Generates a coarse tetrahedral mesh of the combined tissues
     ISO2MESH_TETGENOPT = '-A ';
-    [final_n,final_e,final_f] = surf2mesh(final_n,final_f,[],[],1.0,30,[],[]);
+    [final_n,final_e,final_f] = surf2mesh(final_n,final_f,[],[],1.0,30,[],[],0,'tetgen1.5');
     
+    %% Removes the elements that are part of the box, but not the brain/head
     if (wh == 0)
         [max_node, M] = max(final_n);
         k = find(final_e(:,1:4)==M(3),1);
@@ -145,15 +165,18 @@ for w = 1:2
         [final_n,final_e]=removeisolatednode(final_n,final_e);
     end
     
+    %% Here the labels created through the coarse mesh generated through Tetgen are saved
+    %% with the centroid of one of the elements for intriangulation testing later
     label = unique(final_e(:,5));
     for i = 1:length(label)
         label_elem(i,1) = find(final_e(:,5) == label(i),1);
         label_centroid(i,:) = meshcentroid(final_n,final_e(label_elem(i),1:4));
     end
     
+    %% This step separates the scalp from the air
     if dim_seg > 3
         ISO2MESH_TETGENOPT = '-A';
-        [no_skin,el_skin] = surf2mesh(skin_n,skin_f,[],[],1.0,30,[],[]);
+        [no_skin,el_skin] = surf2mesh(skin_n,skin_f,[],[],1.0,30,[],[],0,'tetgen1.5');
         for i = 1:length(unique(el_skin(:,5)))
             vol_skin(i) = sum(elemvolume(no_skin,el_skin(el_skin(:,5)==i,1:4)));
         end
@@ -169,6 +192,9 @@ for w = 1:2
         f_skin=removedupelem(f_skin);
     end
     
+    %% When the label_elem does not exist, it often indicates a failure at the generation of a coarse
+    %% tetrahedral mesh. The alternative meshing pathway using decoupling is then called to make a
+    %% second attempt at creating the combined tetrahedral mesh.
     if (~exist('label_elem'))&& (w==1)
         fprintf('Initial meshing procedure failed. The option parameter might need to be adjusted. \n')
         fprintf('Activating alternative meshing pathway... \n')
@@ -176,6 +202,8 @@ for w = 1:2
         continue;
     end
     
+    %% The labels are given to each of the tissues
+    %% WM(1) - GM(2) - CSF(3) - Bone(4) - Scalp(5) - Air(6)
     for i = 1:length(label_elem(:,1))
         if intriangulation(wm_n,wm_f(:,1:3),label_centroid(i,:))%inside_test(no_wm,el_wm(:,1:4),label_centroid(i,:))
             label_label(i,1) = 1;
@@ -206,6 +234,7 @@ for w = 1:2
         final_e(i,5) = label_label(final_e(i,5));
     end
     
+    %% This step consolidates adjacent labels of the same tissue
     new_label = unique(final_e(:,5));
     face = [];
     for i = 1:length(new_label)
@@ -215,9 +244,10 @@ for w = 1:2
     face = unique(face,'rows');
     [node,face] = removeisolatednode(final_n,face);
     
+    %% The final mesh is generated here with the desired properties
     ISO2MESH_TETGENOPT = sprintf('-A -Rmpq%fa%i',ratio,maxvol);
     node(:,4) = 5*ones(length(node(:,1)),1)/res;
-    [node2,elem2,face2] = surf2mesh(node,face,[],[],1.0,30,[],[]);
+    [node2,elem2,face2] = surf2mesh(node,face,[],[],1.0,30,[],[],0,'tetgen1.5');
     
     label2 = unique(elem2(:,5));
     for i = 1:length(label2)
@@ -225,6 +255,8 @@ for w = 1:2
         label_centroid2(i,:) = meshcentroid(node2,elem2(label_elem2(i),1:4));
     end
     
+    %% The labeling process is repeated for the final mesh
+    %% WM(1) - GM(2) - CSF(3) - Bone(4) - Scalp(5) - Air(6)
     for i = 1:length(label_elem2(:,1))
         if intriangulation(wm_n,wm_f(:,1:3),label_centroid2(i,:))
             label_label2(i,1) = 1;
