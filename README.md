@@ -1,18 +1,15 @@
----------------------------------------------------------------
-= Brain2mesh: a one-liner for human brain 3D mesh generation  =
----------------------------------------------------------------
+# Brain2mesh: a one-liner for human brain 3D mesh generation  =
 
-*Authors: 
-      Anh Phong Tran* <tran.anh@husky.neu.edu>
-      Qianqian Fang** <q.fang at neu.edu>
-      *Department of Chemical Engineering and **Department of Bioengineering
-      Northeastern University
-      360 Huntington Ave, Boston, MA 02115
-*Version: Beta 0.97
-*License: GPL v2 or later 
-*URL: http://www.mcx.space/brain2mesh
+* Authors: Anh Phong Tran* <tran.anh@husky.neu.edu>, Qianqian Fang** <q.fang at neu.edu>
+  * *Department of Chemical Engineering and **Department of Bioengineering
+  * Northeastern University
+  * 360 Huntington Ave, Boston, MA 02115
+* Version: 0.5.0
+* License: GPL v2 or later 
+* URL: http://www.mcx.space/brain2mesh
 
-== # Introduction ==
+## Introduction 
+
 The Brain2Mesh toolbox provides a streamlined matlab function to convert a segmented brain 
 volumes and surfaces into a high-quality multi-layered tetrahedral brain/full head mesh. 
 
@@ -30,7 +27,8 @@ The Brain2Mesh toolbox is also extensively dependent on:
 3. intriangulation.m (by Adam Aitkenhead and Johannes Korsawe)
 4. max_filter.m
 
-== # Overview of the functions ==
+## Overview of the functions
+
 The function "brain2mesh.m" handles the conversion of segmented volumes into high-quality 3D meshes. 
 It takes an 4D array as input, with different assumptions as to the number of layers. Typically, the layers
 are assumed to contain: white matter (WM), grey matter (GM), cerebrospinal fluid (CSF), bone and scalp.
