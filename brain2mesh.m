@@ -126,10 +126,10 @@ end
 for w = 1:2
     %% If the first pass fails, a second pass is called using the decoupled function
     %% to eliminate intersections between surface meshes
-    if (w==2) && (exist('label_elem'))
+    if (w==2) && (exist('label_elem','var'))
         continue;
     end
-    if (w==2) && (~exist('label_elem'))
+    if (w==2) && (~exist('label_elem','var'))
         [bone_n,bone_f] = surfboolean(bone_n(:,1:3),bone_f(:,1:3),'decouple',skin_n(:,1:3),skin_f(:,1:3));
         [csf_n,csf_f] = surfboolean(csf_n(:,1:3),csf_f(:,1:3),'decouple',bone_n(:,1:3),bone_f(:,1:3));
         [pial_n,pial_f] = surfboolean(pial_n(:,1:3),pial_f(:,1:3),'decouple',csf_n(:,1:3),csf_f(:,1:3));
@@ -195,7 +195,7 @@ for w = 1:2
     %% When the label_elem does not exist, it often indicates a failure at the generation of a coarse
     %% tetrahedral mesh. The alternative meshing pathway using decoupling is then called to make a
     %% second attempt at creating the combined tetrahedral mesh.
-    if (~exist('label_elem'))&& (w==1)
+    if (~exist('label_elem','var'))&& (w==1)
         fprintf('Initial meshing procedure failed. The option parameter might need to be adjusted. \n')
         fprintf('Activating alternative meshing pathway... \n')
         pause(3)
