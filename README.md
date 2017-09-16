@@ -1,4 +1,4 @@
-# Brain2mesh: a one-liner for human brain 3D mesh generation  =
+# Brain2mesh: a one-liner for human brain 3D mesh generation
 
 * Authors: Anh Phong Tran* <tran.anh@husky.neu.edu>, Qianqian Fang** <q.fang at neu.edu>
   * *Department of Chemical Engineering and **Department of Bioengineering

@@ -5,6 +5,9 @@ clear
 
 %% For brain2mesh, the WM is considered first. Thus the order of the tissues is
 %% reversed with the GM.
+
+check_brain2mesh_dependency;
+
 tissues = [2 1 3 4 5];
 
 %% The SPM files are read and stored into the 4D array 'seg'
