@@ -6,15 +6,18 @@ clear
 %% For brain2mesh, the WM is considered first. Thus the order of the tissues is
 %% reversed with the GM.
 tissues = [2 1 3 4 5];
+
+%% The SPM files are read and stored into the 4D array 'seg'
 for i = 1:5
-    A = load_nii(sprintf('c%iANTS40-44Years_head.nii.gz',tissues(i)));
+    A = load_nii(sprintf('SPM/c%iANTS19-5Years_head.nii.gz',tissues(i)));
     dim = size(A.img);
     seg(:,:,:,i) = A.img;
 end
 
 %% The one liner brain2mesh is called. The third parameter controls activates the whole head
 %% pathway
-[node,elem,face] = brain2mesh(seg,1,0);
+[node,elem,face] = brain2mesh(seg,1,1,[2 2 3 3.5 3.5]);
+
 
 %% Plotting of the result
 plotmesh(node,elem(elem(:,5)==1,:),'FaceColor',[1 1 1],'EdgeAlpha',0.6) %%wm
