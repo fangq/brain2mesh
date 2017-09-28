@@ -1,6 +1,6 @@
 # Brain2mesh: a one-liner for human brain 3D mesh generation
 
-* Authors: Anh Phong Tran* <tran.anh@husky.neu.edu>, Qianqian Fang** <q.fang at neu.edu>
+* Authors: Anh Phong Tran* <tran.anh at husky.neu.edu>, Qianqian Fang** <q.fang at neu.edu>
   * *Department of Chemical Engineering and **Department of Bioengineering
   * Northeastern University
   * 360 Huntington Ave, Boston, MA 02115
@@ -43,3 +43,7 @@ such as the ones produced in FreeSurfer and BrainSuite as part of the input data
 Your acknowledgement of brain2mesh in your publications or presentations 
 would be greatly appreciated by the authors of this toolbox. The citation 
 information can be found in the Introduction section.
+
+## Acknowledgement 
+
+This project is funded by the National Institutes of Health (NIH) / National Institute of General Medical Sciences (NIGMS) under the grant number R01-GM114365 (https://projectreporter.nih.gov/project_info_description.cfm?aid=9251827&icde=36227877).
