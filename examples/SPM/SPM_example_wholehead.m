@@ -15,6 +15,12 @@ seg.csf = data(:,:,:,3);
 seg.skull = data(:,:,:,4);
 seg.scalp = data(:,:,:,5);
 
+%% Alternative loading option using a 4D array.
+% tissue_order = [5 4 3 1 2]; %Reordering tissues with scalp first going inward to WM
+% for i = 1:5
+%    seg(:,:,:,i) = data(:,:,:,tissue_order(i));
+% end
+
 
 %% The one liner brain2mesh is called. The third parameter controls activates the whole head
 %% pathway

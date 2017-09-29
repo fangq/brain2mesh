@@ -9,6 +9,11 @@ function [node2,elem2,face2] = brain2mesh(seg,res,wh,options,maxvol,ratio)
 %
 % input:
 %      seg: a structure with fields (wm,gm,csf,skull,scalp)
+%           or a 4D array for which the first tissue volume is the most
+%           outter one. Currently assumed scenarios are as follow: 
+%           size(seg,4) == 5 assumes 1-Scalp, 2-Skull, 3-CSF, 4. GM, 5. WM
+%           size(seg,4) == 4 assumes 1-Scalp, 2-CSF, 3-GM., 4-WM
+%           size(seg,4) == 3 assumes 1-CSF, 2-GM, 3-WM
 %      res: default is 1, indicates the length of a voxel in mm.
 %             e.g. if MRI has a 0.5x0.5x0.5 mm^3 resolution, use 0.5%
 %      options: (optional) radius of the Delaunay sphere (element size)
@@ -71,30 +76,51 @@ else
     end
 end
 
+if isstruct(seg)
+    seg2 = seg;
+elseif size(seg,4) == 5
+    seg2.scalp = seg(:,:,:,1);
+    seg2.skull = seg(:,:,:,2);
+    seg2.csf = seg(:,:,:,3);
+    seg2.gm = seg(:,:,:,4);
+    seg2.wm = seg(:,:,:,5); 
+elseif size(seg,4) == 4
+    seg2.scalp = seg(:,:,:,1);
+    seg2.csf = seg(:,:,:,2);
+    seg2.gm = seg(:,:,:,3);
+    seg2.wm = seg(:,:,:,4);
+elseif size(seg,4) == 3
+    seg2.csf = seg(:,:,:,1);
+    seg2.gm = seg(:,:,:,2);
+    seg2.wm = seg(:,:,:,3);
+else
+    fprintf('This seg input is currently not supported \n')
+end
+
 %% Pre-processing steps to create separations between the tissues in the
 %% volume space
-dim = size(seg.wm);
-seg.wm = imfill(seg.wm,'holes');
-p_wm = seg.wm;
-p_pial = p_wm+seg.gm;
+dim = size(seg2.wm);
+seg2.wm = imfill(seg2.wm,'holes');
+p_wm = seg2.wm;
+p_pial = p_wm+seg2.gm;
 p_pial = max(p_pial,max_filter(p_wm,3,1));
 p_pial = imfill(p_pial,'holes');
-p_csf = p_pial+seg.csf;
+p_csf = p_pial+seg2.csf;
 p_csf(p_csf>1) = 1;
 p_csf = max(p_csf,max_filter(p_pial,3,1));
-if isfield(seg,'skull') && isfield(seg,'scalp')
-    p_bone = p_csf + seg.skull;
+if isfield(seg2,'skull') && isfield(seg2,'scalp')
+    p_bone = p_csf + seg2.skull;
     p_bone(p_bone>1) = 1;
     p_bone = max(p_bone,max_filter(p_csf,3,1));
-    p_skin = p_bone + seg.scalp;
+    p_skin = p_bone + seg2.scalp;
     p_skin(p_skin>1) = 1;
     p_skin = max(p_skin,max_filter(p_bone,3,1));
-elseif isfield(seg,'scalp') && ~isfield(seg,'skull')
-    p_skin = p_csf + seg.scalp;
+elseif isfield(seg2,'scalp') && ~isfield(seg2,'skull')
+    p_skin = p_csf + seg2.scalp;
     p_skin(p_skin>1) = 1;
     p_skin = max(p_skin,max_filter(p_csf,3,1));
-elseif isfield(seg,'skull') && ~isfield(seg,'scalp')
-    p_bone = p_csf + seg.skull;
+elseif isfield(seg2,'skull') && ~isfield(seg2,'scalp')
+    p_bone = p_csf + seg2.skull;
     p_bone(p_bone>1) = 1;
     p_bone = max(p_bone,max_filter(p_csf,3,1));
 end
@@ -104,7 +130,7 @@ end
 [wm_n,wm_f] = v2s(p_wm,THRESH,opt(1),'cgalsurf');
 [pial_n,pial_f] = v2s(p_pial,THRESH,opt(2),'cgalsurf');
 [csf_n,csf_f] = v2s(p_csf,THRESH,opt(3),'cgalsurf');
-if isfield(seg,'skull')
+if isfield(seg2,'skull')
     [bone_n,bone_f] = v2s(p_bone,THRESH,opt(4),'cgalsurf');
     ISO2MESH_TETGENOPT = '-A';
     [bone_n,el_bone] = surf2mesh(bone_n,bone_f,[],[],1.0,30,[],[],0,'tetgen1.5');
@@ -112,7 +138,7 @@ if isfield(seg,'skull')
     bone_f=removedupelem(bone_f);
     [bone_n,bone_f]=removeisolatednode(bone_n,bone_f);
 end
-if isfield(seg,'scalp')
+if isfield(seg2,'scalp')
     [skin_n,skin_f] = v2s(p_skin,THRESH,opt(5),'cgalsurf');
 end
 
@@ -134,10 +160,10 @@ for w = 1:2
     end
     [final_n,final_f] = surfboolean(wm_n(:,1:3),wm_f(:,1:3),'resolve',pial_n,pial_f);
     [final_n,final_f] = surfboolean(final_n,final_f,'resolve',csf_n,csf_f);
-    if isfield(seg,'skull')
+    if isfield(seg2,'skull')
         [final_n,final_f] = surfboolean(final_n,final_f,'resolve',bone_n,bone_f);
     end
-    if isfield(seg,'scalp')
+    if isfield(seg2,'scalp')
         [final_n,final_f] = surfboolean(final_n,final_f,'resolve',skin_n,skin_f);
     end
     
@@ -171,7 +197,7 @@ for w = 1:2
     end
     
     %% This step separates the scalp from the air
-    if isfield(seg,'scalp')
+    if isfield(seg2,'scalp')
         ISO2MESH_TETGENOPT = '-A';
         [no_skin,el_skin] = surf2mesh(skin_n,skin_f,[],[],1.0,30,[],[],0,'tetgen1.5');
         for i = 1:length(unique(el_skin(:,5)))
