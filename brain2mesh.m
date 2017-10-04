@@ -8,10 +8,12 @@ function [node2,elem2,face2] = brain2mesh(seg,res,wh,options,maxvol,ratio)
 % [node,elem,face] = brain2mesh(seg,res,options,maxvol,ratio)
 %
 % input:
-%      seg: a 4-D containing the volumetric segmented information
-%           If size(seg,4) == 5: WM(1), GM(2), CSF(3), Bone(4), Scalp(5)
-%           If size(seg,4) == 4: WM(1), GM(2), CSF(3), Scalp(4)
-%           If size(seg,4) == 3: WM(1), GM(2), CSF(3)
+%      seg: a structure with fields (wm,gm,csf,skull,scalp)
+%           or a 4D array for which the first tissue volume is the most
+%           outter one. Currently assumed scenarios are as follow: 
+%           size(seg,4) == 5 assumes 1-Scalp, 2-Skull, 3-CSF, 4. GM, 5. WM
+%           size(seg,4) == 4 assumes 1-Scalp, 2-CSF, 3-GM., 4-WM
+%           size(seg,4) == 3 assumes 1-CSF, 2-GM, 3-WM
 %      res: default is 1, indicates the length of a voxel in mm.
 %             e.g. if MRI has a 0.5x0.5x0.5 mm^3 resolution, use 0.5%
 %      options: (optional) radius of the Delaunay sphere (element size)
@@ -23,10 +25,12 @@ function [node2,elem2,face2] = brain2mesh(seg,res,wh,options,maxvol,ratio)
 %
 % output:
 %      node: output, node coordinates of the tetrahedral mesh
-%      elem: output, element list of the tetrahedral mesh
+%      elem: output, element list of the tetrahedral mesh / the last column denotes the boundary ID
 %      face: output, mesh surface element list of the tetrahedral mesh 
-%             the last column denotes the boundary ID
-%
+%      
+% Tissue ID for the outputs are as follow:
+% 0-Air/background, 1-Scalp, 2-Skull, 3-CSF, 4-GM, 5-WM
+% 
 % Methodology behind this function is presented in:
 % Anh Phong Tran and Qianqian Fang, "Fast and high-quality tetrahedral mesh generation \
 % from neuroanatomical scans,". In: arXiv pre-print (August 2017). arXiv:1708.08954v1 [physics.med-ph]
@@ -50,8 +54,6 @@ if isempty(res)
     res = 1;
 end
 
-dim_seg = size(seg,4);
-
 default_opt = [1.7 1.7 2 2.5 3];
 THRESH = 0.5;
 MAX_NODE = 40000/res;
@@ -74,30 +76,53 @@ else
     end
 end
 
+if isstruct(seg)
+    seg2 = seg;
+elseif size(seg,4) == 5
+    seg2.scalp = seg(:,:,:,1);
+    seg2.skull = seg(:,:,:,2);
+    seg2.csf = seg(:,:,:,3);
+    seg2.gm = seg(:,:,:,4);
+    seg2.wm = seg(:,:,:,5); 
+elseif size(seg,4) == 4
+    seg2.scalp = seg(:,:,:,1);
+    seg2.csf = seg(:,:,:,2);
+    seg2.gm = seg(:,:,:,3);
+    seg2.wm = seg(:,:,:,4);
+elseif size(seg,4) == 3
+    seg2.csf = seg(:,:,:,1);
+    seg2.gm = seg(:,:,:,2);
+    seg2.wm = seg(:,:,:,3);
+else
+    fprintf('This seg input is currently not supported \n')
+end
+
 %% Pre-processing steps to create separations between the tissues in the
 %% volume space
-dim = size(seg);
-seg(:,:,:,1) = imfill(seg(:,:,:,1),'holes');
-p_wm = seg(:,:,:,1);
-p_pial = p_wm+seg(:,:,:,2);
+dim = size(seg2.wm);
+seg2.wm = imfill(seg2.wm,'holes');
+p_wm = seg2.wm;
+p_pial = p_wm+seg2.gm;
 p_pial = max(p_pial,max_filter(p_wm,3,1));
 p_pial = imfill(p_pial,'holes');
-p_csf = p_pial+seg(:,:,:,3);
+p_csf = p_pial+seg2.csf;
 p_csf(p_csf>1) = 1;
 p_csf = max(p_csf,max_filter(p_pial,3,1));
-if dim_seg > 4
-    p_bone = p_csf + seg(:,:,:,4);
+if isfield(seg2,'skull') && isfield(seg2,'scalp')
+    p_bone = p_csf + seg2.skull;
     p_bone(p_bone>1) = 1;
     p_bone = max(p_bone,max_filter(p_csf,3,1));
-end
-if dim_seg == 4
-    p_skin = p_csf + seg(:,:,:,4);
-    p_skin(p_skin>1) = 1;
-    p_skin = max(p_skin,max_filter(p_csf,3,1));
-elseif dim_seg >3
-    p_skin = p_bone + seg(:,:,:,5);
+    p_skin = p_bone + seg2.scalp;
     p_skin(p_skin>1) = 1;
     p_skin = max(p_skin,max_filter(p_bone,3,1));
+elseif isfield(seg2,'scalp') && ~isfield(seg2,'skull')
+    p_skin = p_csf + seg2.scalp;
+    p_skin(p_skin>1) = 1;
+    p_skin = max(p_skin,max_filter(p_csf,3,1));
+elseif isfield(seg2,'skull') && ~isfield(seg2,'scalp')
+    p_bone = p_csf + seg2.skull;
+    p_bone(p_bone>1) = 1;
+    p_bone = max(p_bone,max_filter(p_csf,3,1));
 end
 
 %% Grayscale/Binary extractions of the surface meshes for the different
@@ -105,18 +130,16 @@ end
 [wm_n,wm_f] = v2s(p_wm,THRESH,opt(1),'cgalsurf');
 [pial_n,pial_f] = v2s(p_pial,THRESH,opt(2),'cgalsurf');
 [csf_n,csf_f] = v2s(p_csf,THRESH,opt(3),'cgalsurf');
-if dim_seg > 4
+if isfield(seg2,'skull')
     [bone_n,bone_f] = v2s(p_bone,THRESH,opt(4),'cgalsurf');
-end
-if dim_seg > 3
-    [skin_n,skin_f] = v2s(p_skin,THRESH,opt(5),'cgalsurf');
-end
-if dim_seg > 4
     ISO2MESH_TETGENOPT = '-A';
     [bone_n,el_bone] = surf2mesh(bone_n,bone_f,[],[],1.0,30,[],[],0,'tetgen1.5');
     [bone_f] = volface(el_bone(:,1:4));
     bone_f=removedupelem(bone_f);
     [bone_n,bone_f]=removeisolatednode(bone_n,bone_f);
+end
+if isfield(seg2,'scalp')
+    [skin_n,skin_f] = v2s(p_skin,THRESH,opt(5),'cgalsurf');
 end
 
 
@@ -137,10 +160,10 @@ for w = 1:2
     end
     [final_n,final_f] = surfboolean(wm_n(:,1:3),wm_f(:,1:3),'resolve',pial_n,pial_f);
     [final_n,final_f] = surfboolean(final_n,final_f,'resolve',csf_n,csf_f);
-    if dim_seg > 4
+    if isfield(seg2,'skull')
         [final_n,final_f] = surfboolean(final_n,final_f,'resolve',bone_n,bone_f);
     end
-    if dim_seg > 3
+    if isfield(seg2,'scalp')
         [final_n,final_f] = surfboolean(final_n,final_f,'resolve',skin_n,skin_f);
     end
     
@@ -166,7 +189,7 @@ for w = 1:2
     end
     
     %% Here the labels created through the coarse mesh generated through Tetgen are saved
-    %% with the centroid of one of the elements for intriangulation testing later
+    %% with the centroid of one of the elements for intriangulation seg(:,:,:,1)testing later
     label = unique(final_e(:,5));
     for i = 1:length(label)
         label_elem(i,1) = find(final_e(:,5) == label(i),1);
@@ -174,7 +197,7 @@ for w = 1:2
     end
     
     %% This step separates the scalp from the air
-    if dim_seg > 3
+    if isfield(seg2,'scalp')
         ISO2MESH_TETGENOPT = '-A';
         [no_skin,el_skin] = surf2mesh(skin_n,skin_f,[],[],1.0,30,[],[],0,'tetgen1.5');
         for i = 1:length(unique(el_skin(:,5)))
@@ -286,5 +309,5 @@ for w = 1:2
     for i = 1:length(elem2(:,1))
         elem2(i,5) = label_label2(elem2(i,5));
     end
-    
+    elem2(:,5) = 6 - elem2(:,5);
 end
