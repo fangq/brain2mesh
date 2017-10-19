@@ -115,6 +115,12 @@ if isfield(seg2,'skull') && isfield(seg2,'scalp')
     p_skin = p_bone + seg2.scalp;
     p_skin(p_skin>1) = 1;
     p_skin = max(p_skin,max_filter(p_bone,3,1));
+    expandedGM = p_pial - seg2.wm - seg2.gm;
+	expandedCSF = p_csf - seg2.wm - seg2.gm - seg2.csf - expandedGM;
+	expandedSkull = p_bone - seg2.wm - seg2.gm - seg2.csf - seg2.skull - expandedCSF - expandedGM;
+	expandedGM = (expandedGM+max_filter(expandedGM,3,1))/2;
+	expandedCSF = (expandedCSF+max_filter(expandedCSF,3,1))/2;
+	expandedSkull = (expandedSkull+max_filter(expandedSkull,3,1))/2;
 elseif isfield(seg2,'scalp') && ~isfield(seg2,'skull')
     p_skin = p_csf + seg2.scalp;
     p_skin(p_skin>1) = 1;
@@ -309,5 +315,20 @@ for w = 1:2
     for i = 1:length(elem2(:,1))
         elem2(i,5) = label_label2(elem2(i,5));
     end
+    
+    if isfield(seg2,'skull') && isfield(seg2,'scalp')
+        centroid = ceil(meshcentroid(node2(:,1:3),elem2(:,1:4)));
+        for i = 1:length(elem2(:,1))
+            if (expandedGM(centroid(i,1),centroid(i,2),centroid(i,3))>0.5) && (elem2(i,5) == 2)
+                elem2(i,5) = 3;
+            elseif (expandedCSF(centroid(i,1),centroid(i,2),centroid(i,3))>0.5) && (elem2(i,5) == 3)
+                elem2(i,5) = 4;
+            elseif (expandedSkull(centroid(i,1),centroid(i,2),centroid(i,3))>0.5) && (elem2(i,5) == 4)
+                elem2(i,5) = 5;
+            end
+        end
+    end
+	
     elem2(:,5) = 6 - elem2(:,5);
+end
 end
