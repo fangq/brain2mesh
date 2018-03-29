@@ -24,7 +24,8 @@ seg.scalp = data(:,:,:,5);
 
 %% The one liner brain2mesh is called. The third parameter controls activates the whole head
 %% pathway
-[node,elem,face] = brain2mesh(seg,1,1,[2 2 3 3.5 3.5]);
+cfg.wh = 1;
+[node,elem,face] = brain2mesh(seg);
 
 
 %% Plotting of the result
