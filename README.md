@@ -6,7 +6,7 @@
   * 360 Huntington Ave, Boston, MA 02115
 * Version: 0.5.0
 * License: GPL v2 or later 
-* URL: http://www.mcx.space/brain2mesh
+* URL: http://mcx.space/brain2mesh
 
 ## Introduction 
 
@@ -17,8 +17,8 @@ This tool does not handle the segmentation of MRI scans, but examples of how com
 encountered segmented datasets can be used to create meshes are available under the "examples" folder.
 
 The details of this toolbox can be found in the following paper:
-Anh Phong Tran and Qianqian Fang, "Fast and high-quality tetrahedral mesh generation \
-from neuroanatomical scans,". In: arXiv pre-print (August 2017). arXiv:1708.08954v1 [physics.med-ph]
+
+Anh Phong Tran and Qianqian Fang, "[Fast and high-quality tetrahedral mesh generation from neuroanatomical scans](https://arxiv.org/abs/1708.08954),". In: arXiv pre-print (August 2017). arXiv:1708.08954v1 [physics.med-ph]
 
 The Brain2Mesh toolbox is also extensively dependent on:
 1. Iso2Mesh toolbox (http://iso2mesh.sf.net)
@@ -46,4 +46,6 @@ information can be found in the Introduction section.
 
 ## Acknowledgement 
 
-This project is funded by the National Institutes of Health (NIH) / National Institute of General Medical Sciences (NIGMS) under the grant number R01-GM114365 (https://projectreporter.nih.gov/project_info_description.cfm?aid=9251827&icde=36227877).
+This project is funded by the National Institutes of Health (NIH) / National Institute of General 
+Medical Sciences (NIGMS) under the grant number R01-GM114365, and NIH/NINID/NIBIB under the grant
+number R01-EB026998.

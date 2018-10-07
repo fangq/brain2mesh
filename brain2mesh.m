@@ -1,45 +1,52 @@
 function [brain_n,brain_el,brain_f] = brain2mesh(seg,cfg)
-% Surface-based brain meshing using volumetric data
+%
+% Brain2mesh: a one-liner for human brain 3D mesh generation
 % 
 % == Format == 
-% [node,elem,face] = brain2mesh(seg,cfg); or [node,elem,face] = brain2mesh(seg)
+% [node,elem,face] = brain2mesh(seg,cfg); 
+%     or 
+% [node,elem,face] = brain2mesh(seg)
 % 
 % == Input ==
-%      seg: -a structure with fields (wm,gm,csf,skull,scalp)
-%           e.g.: seg.wm, seg.gm, seg.csf are defined
-%           or 
-%           -a 4D array for which the first tissue volume is the most
-%           outter one. Currently assumed scenarios are as follow: 
-%           size(seg,4) == 5 assumes 1-Scalp, 2-Skull, 3-CSF, 4. GM, 5. WM
-%           size(seg,4) == 4 assumes 1-Scalp, 2-CSF, 3-GM., 4-WM
-%           size(seg,4) == 3 assumes 1-CSF, 2-GM, 3-WM
-%      
+%      seg: pre-segmented brain volume (supporting both probalistic tissue 
+%           segmentation and labeled volume). Two formats are accepted
+%           1. a structure with subfields (wm,gm,csf,skull,scalp)
+%              e.g.: seg.wm, seg.gm, seg.csf represents the white-matter, 
+%              gray-matter and csf segmentaions, respectively,
+%                  or 
+%           2. a 4D array for with tissued sorted in outer-to-inner order
+%              the 4th dimension of the array can 3-6, with the following assumptions
+%              size(seg,4) == 6 assumes 1-Scalp, 2-Skull, 3-CSF, 4-GM, 5-WM, 6-air pockets
+%              size(seg,4) == 5 assumes 1-Scalp, 2-Skull, 3-CSF, 4-GM, 5-WM
+%              size(seg,4) == 4 assumes 1-Scalp, 2-CSF, 3-GM, 4-WM
+%              size(seg,4) == 3 assumes 1-CSF, 2-GM, 3-WM
+%
 %      cfg: a struct defining the options for the resulting tetrahedral mesh
-%           [default] values are applied if field is not defined
-%      cfg.samplingwm /.samplinggm/.samplingcsf/.samplingskull/.samplingscalp:
+%          default values are applied if field is not defined
+%          cfg.samplingwm /.samplinggm/.samplingcsf/.samplingskull/.samplingscalp:
 %             Radius of the Delaunay sphere used in the sampling the surfaces.
 %             Default values are 1.7, 1.7, 2, 2.5 and 3, respectively (reference values for 1x1x1mm^3)
 %             Scale proportionally for denser volumes. Lower values correspond to denser, higher
 %             fidelity surface extraction, but also results in denser meshes.
-%      cfg.maxnode: [120000] - when  the value cfg.sampling__ creates surfaces that are too 
+%          cfg.maxnode: [120000] - when  the value cfg.sampling__ creates surfaces that are too 
 %             dense. This limits the maximum of number of nodes extracted for a given surface.
-%      cfg.maxvol: [30] indicates the volumetric maximum size of elements
+%          cfg.maxvol: [30] indicates the volumetric maximum size of elements
 %             Lowering this value helps with obtaining a denser tetrahedral
 %             mesh. For dense meshes, values close to 3-5 are recommended.
-%      cfg.meshfield: [3] - mesh sizing field used at the mesh generation step.
+%          cfg.sizefield: [3] - mesh sizing field used at the mesh generation step.
 %             Higher values can help lowering the final mesh density.         
-%      cfg.ratio: [1.414] radius-edge ratio. Lower values increase 
+%          cfg.ratio: [1.414] radius-edge ratio. Lower values increase 
 %             the quality of tetrahedral elements, but results in denser meshes
-%      cfg.relabeling: [0] or 1 - This step removes most of the assumptions 
+%          cfg.relabeling: [0] or 1 - This step removes most of the assumptions 
 %             created by the layered meshing workflow. Currently only works if all five tissue types are present.
 %             When deactivated, a 1 voxel length gap is assumed between each of the tissue layers.
-%      cfg.skullair: 0 or [1]. Within the skull layer, self-contained entities can be created. 
+%          cfg.skullair: 0 or [1]. Within the skull layer, self-contained entities can be created. 
 %             By default, these entities are merged to the skull because they can be ambiguously be
 %             vessels or air. When the option 1 is chosen, these entities
 %             are labeled as air/background instead.
-%      cfg.wh: [0] or 1. by default, the mesh is truncated a few pixel in the 
-%       +z direction below the lowest pixel containing CSF to focus on the brain areas. 
-%       A value of 1 gives a complete head mesh. 
+%          cfg.wh: [0] or 1. by default, the mesh is truncated a few pixel in the 
+%             +z direction below the lowest pixel containing CSF to focus on the brain areas. 
+%             A value of 1 gives a complete head mesh. 
 % 
 % == Outputs ==
 %      node: node coordinates of the tetrahedral mesh
@@ -47,7 +54,7 @@ function [brain_n,brain_el,brain_f] = brain2mesh(seg,cfg)
 %      face: mesh surface element list of the tetrahedral mesh 
 %      
 % Tissue ID for the outputs are as follow:
-% 0-Air/background, 1-Scalp, 2-Skull, 3-CSF, 4-GM, 5-WM
+% 0-Air/background, 1-Scalp, 2-Skull, 3-CSF, 4-GM, 5-WM, 6-air pockets
 % 
 % == Methodology ==
 % The underlying methodology behind this function is described in:
@@ -62,8 +69,8 @@ elseif nargin ~= 2
 end
 
 if (~exist('cfg'))
-    fprintf('Cfg was not defined, proceeding with default values \n')
-    cfg.ratio = 1.414;
+    radbd=struct('wm',1.7,'gm',1.7,'csf',2.0,'skull',2.5,'scalp',3.0);
+    cfg = struct('ratio',1.414,'wh',0,'maxvol',30,'sizefield',3,'relabeling',0,'radbound',radbd,'skullair',1,'maxnode',120000);
 end
 
 if (~isfield(cfg,'ratio'))
@@ -75,8 +82,8 @@ end
 if (~isfield(cfg,'maxvol'))
     cfg.maxvol = 30;
 end
-if (~isfield(cfg,'meshfield'))
-    cfg.meshfield = 3;
+if (~isfield(cfg,'sizefield'))
+    cfg.sizefield = 3;
 end
 if (~isfield(cfg,'relabeling'))
     cfg.relabeling = 0;
@@ -334,7 +341,7 @@ for loop = 1:2
 
     %% The final mesh is generated here with the desired properties
     ISO2MESH_TETGENOPT = sprintf('-A -Rmpq%fa%i',cfg.ratio,cfg.maxvol);
-    node(:,4) = cfg.meshfield*ones(length(node(:,1)),1);
+    node(:,4) = cfg.sizefield*ones(length(node(:,1)),1);
     [brain_n,brain_el,brain_f] = surf2mesh(node,face,[],[],1.0,10,[],[],0,'tetgen1.5');
 
     label2 = unique(brain_el(:,5)); 
