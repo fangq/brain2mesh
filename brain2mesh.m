@@ -66,6 +66,16 @@ if nargin == 0
     return;
 end
 
+if(~exist('v2m','file'))
+    error('Missing dependency. You must download and addpath to brain2mesh.m, URL: https://github.com/fangq/brain2mesh')
+end
+if(~exist('imfill','file'))
+    error('Missing dependency. You must install MATLAB image processing toolbox')
+end
+if(~exist('intriangulation','file'))
+    error('Missing dependency. You must download and addpath to intriangulation.m, URL: https://www.mathworks.com/matlabcentral/fileexchange/43381-intriangulation-vertices-faces-testp-heavytest')
+end
+
 density=struct('wm',2,'gm',2,'csf',5,'skull',4,'scalp',8);
 cfg=varargin2struct(varargin{:});
 
@@ -99,6 +109,7 @@ for i = 1:size(fieldnames(seg2))
     opt(i).radbound= radbound.(segname{i});
 end
 
+cube3=true(3,3,3);
 
 %% Pre-processing steps to create separations between the tissues in the
 % volume space
@@ -107,34 +118,34 @@ dim = size(seg2.wm);
 seg2.wm = imfill(seg2.wm,'holes');
 p_wm = seg2.wm;
 p_pial = p_wm+seg2.gm;
-p_pial = max(p_pial,imdilate(p_wm,true(3)));
+p_pial = max(p_pial,imdilate(p_wm,cube3));
 p_pial = imfill(p_pial,'holes');
 p_csf = p_pial+seg2.csf;
 p_csf(p_csf>1) = 1;
-p_csf = max(p_csf,imdilate(p_pial,true(3)));
+p_csf = max(p_csf,imdilate(p_pial,cube3));
 
 expandedGM = p_pial - seg2.wm - seg2.gm;
 expandedCSF = p_csf - seg2.wm - seg2.gm - seg2.csf - expandedGM;
-expandedGM = imdilate(expandedGM,true(3));
-expandedCSF = imdilate(expandedCSF,true(3));
+expandedGM = imdilate(expandedGM,cube3);
+expandedCSF = imdilate(expandedCSF,cube3);
 
 if isfield(seg2,'skull') && isfield(seg2,'scalp')
     p_bone = p_csf + seg2.skull;
     p_bone(p_bone>1) = 1;
-    p_bone = max(p_bone,imdilate(p_csf,true(3)));
+    p_bone = max(p_bone,imdilate(p_csf,cube3));
     p_skin = p_bone + seg2.scalp;
     p_skin(p_skin>1) = 1;
-    p_skin = max(p_skin,imdilate(p_bone,true(3)));
+    p_skin = max(p_skin,imdilate(p_bone,cube3));
 	expandedSkull = p_bone - seg2.wm - seg2.gm - seg2.csf - seg2.skull - expandedCSF - expandedGM;
-    expandedSkull = imdilate(expandedSkull,true(3));
+    expandedSkull = imdilate(expandedSkull,cube3);
 elseif isfield(seg2,'scalp') && ~isfield(seg2,'skull')
     p_skin = p_csf + seg2.scalp;
     p_skin(p_skin>1) = 1;
-    p_skin = max(p_skin,imdilate(p_csf,true(3)));
+    p_skin = max(p_skin,imdilate(p_csf,cube3));
 elseif isfield(seg2,'skull') && ~isfield(seg2,'scalp')
     p_bone = p_csf + seg2.skull;
     p_bone(p_bone>1) = 1;
-    p_bone = max(p_bone,imdilate(p_csf,true(3)));
+    p_bone = max(p_bone,imdilate(p_csf,cube3));
 end
 
 %% Grayscale/Binary extractions of the surface meshes for the different
@@ -157,11 +168,11 @@ if isfield(seg2,'skull')
     [bone_n,bone_f]=meshcheckrepair(bone_n,bone_f(:,1:3),'isolated');
     bone_n=sms(bone_n,bone_f,smooth,0.5,'lowpass');
 
-    [bone_node,el_bone] = surf2mesh(bone_n,bone_f,[],[],1.0,30,[],[],0,'tetgen1.5');
+    [bone_node,el_bone] = s2m(bone_n,bone_f,1.0,maxvol,'tetgen1.5');
     for i = 1:length(unique(el_bone(:,5)))
         vol_bone(i) = sum(elemvolume(bone_node,el_bone(el_bone(:,5)==i,1:4)));
     end
-    [~,I] = max(vol_bone);
+    [maxval,I] = max(vol_bone);
     if (length(unique(el_bone(:,5)))>1)
         no_air2 = bone_node; el_air2 = el_bone(el_bone(:,5)~=I,:);
         [no_air2,el_air2]=removeisolatednode(no_air2,el_air2);
@@ -215,11 +226,11 @@ for loop = 1:2
     end
     
     %% Generates a coarse tetrahedral mesh of the combined tissues
-    [final_n,final_e,~] = surf2mesh(final_n,final_f,[],[],1.0,30,[],[],0,'tetgen1.5');
+    [final_n,final_e] = s2m(final_n,final_f,1.0,maxvol,'tetgen1.5');
 
     %% Removes the elements that are part of the box, but not the brain/head
     if (dotruncate == 1)
-        [~, M] = max(final_n);
+        [maxval, M] = max(final_n);
         k = find(final_e(:,1:4)==M(3),1);
         final_e = final_e(final_e(:,5)~=final_e(rem(k,length(final_e(:,1))),5),:);
         [final_n,final_e]=removeisolatednode(final_n,final_e);
@@ -234,11 +245,11 @@ for loop = 1:2
     end
 
     if isfield(seg2,'scalp')
-        [no_skin,el_skin] = surf2mesh(skin_n,skin_f,[],[],1.0,30,[],[],0,'tetgen1.5');
+        [no_skin,el_skin] = s2m(skin_n,skin_f,1.0,maxvol,'tetgen1.5');
         for i = 1:length(unique(el_skin(:,5)))
             vol_skin(i) = sum(elemvolume(no_skin,el_skin(el_skin(:,5)==i,1:4)));
         end
-        [~,I] = max(vol_skin);
+        [maxval,I] = max(vol_skin);
         if (length(unique(el_skin(:,5)))>1)
             no_air = no_skin; el_air = el_skin(el_skin(:,5)~=I,:);
             [no_air,el_air]=removeisolatednode(no_air,el_air);
@@ -318,7 +329,7 @@ for loop = 1:2
     %% The final mesh is generated here with the desired properties
     ISO2MESH_TETGENOPT = sprintf('-A -Rmpq%fa%i',qratio,maxvol);
     %node(:,4) = sizefield(:).*ones(length(node(:,1)),1);
-    [brain_n,brain_el,brain_f] = surf2mesh(node,face,[],[],1.0,10,[],[],0,'tetgen1.5');
+    [brain_n,brain_el,brain_f] = s2m(node,face,1.0,maxvol,'tetgen1.5');
     clear ISO2MESH_TETGENOPT;
 
     label2 = unique(brain_el(:,5)); 
