@@ -1,11 +1,14 @@
 # Brain2mesh: a one-liner for human brain 3D mesh generation
 
-* Authors: Anh Phong Tran* <tran.anh at husky.neu.edu>, Qianqian Fang** <q.fang at neu.edu>
-  * *Department of Chemical Engineering and **Department of Bioengineering
+* Authors: 
+  * Anh Phong Tran <tran.anh at husky.neu.edu>, and
+  * Qianqian Fang <q.fang at neu.edu>
+* Address:
+  * Department of Bioengineering
   * Northeastern University
   * 360 Huntington Ave, Boston, MA 02115
 * Version: 0.5.0
-* License: GPL v2 or later 
+* License: GPL v2 or later, see LICENSE.txt
 * URL: http://mcx.space/brain2mesh
 
 ## Introduction 
@@ -21,8 +24,7 @@ The details of this toolbox can be found in the following paper:
 Anh Phong Tran and Qianqian Fang, "[Fast and high-quality tetrahedral mesh generation from neuroanatomical scans](https://arxiv.org/abs/1708.08954),". In: arXiv pre-print (August 2017). arXiv:1708.08954v1 [physics.med-ph]
 
 The Brain2Mesh toolbox is also extensively dependent on:
-1. Iso2Mesh toolbox (http://iso2mesh.sf.net)
-   Not included - use the latest version at: https://github.com/fangq/iso2mesh
+1. Iso2Mesh toolbox (http://iso2mesh.sf.net), not included, download at https://github.com/fangq/iso2mesh
 2. MATLAB Image-Processing toolbox (such as imfill, imdilate)
 3. intriangulation.m (by Adam Aitkenhead and Johannes Korsawe)
 
@@ -48,3 +50,35 @@ information can be found in the Introduction section.
 This project is funded by the National Institutes of Health (NIH) / National Institute of General 
 Medical Sciences (NIGMS) under the grant number R01-GM114365, and NIH/NINID/NIBIB under the grant
 number R01-EB026998.
+
+###  Copyright disclaimer for intriangulation.m
+
+Copyright (c) 2016, Johannes Korsawe
+Copyright (c) 2013, Adam H. Aitkenhead
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution
+* Neither the name of Volkswagen AG nor the names of its
+  contributors may be used to endorse or promote products derived from this
+  software without specific prior written permission.
+* Neither the name of The Christie NHS Foundation Trust nor the names of its
+  contributors may be used to endorse or promote products derived from this
+  software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
