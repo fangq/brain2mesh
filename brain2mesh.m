@@ -1,4 +1,4 @@
-function [brain_n,brain_el,brain_f] = brain2mesh(seg,cfg)
+function [brain_n,brain_el,brain_f] = brain2mesh(seg,varargin)
 %
 % Brain2mesh: a one-liner for human brain 3D mesh generation
 % 
@@ -23,30 +23,28 @@ function [brain_n,brain_el,brain_f] = brain2mesh(seg,cfg)
 %
 %      cfg: a struct defining the options for the resulting tetrahedral mesh
 %          default values are applied if field is not defined
-%          cfg.samplingwm /.samplinggm/.samplingcsf/.samplingskull/.samplingscalp:
+%          cfg.radbound.{wm,gm,csf,skull,scalp}
 %             Radius of the Delaunay sphere used in the sampling the surfaces.
 %             Default values are 1.7, 1.7, 2, 2.5 and 3, respectively (reference values for 1x1x1mm^3)
 %             Scale proportionally for denser volumes. Lower values correspond to denser, higher
 %             fidelity surface extraction, but also results in denser meshes.
-%          cfg.maxnode: [120000] - when  the value cfg.sampling__ creates surfaces that are too 
+%          cfg.maxnode: [100000] - when  the value cfg.sampling__ creates surfaces that are too 
 %             dense. This limits the maximum of number of nodes extracted for a given surface.
-%          cfg.maxvol: [30] indicates the volumetric maximum size of elements
+%          cfg.maxvol: [100] indicates the volumetric maximum size of elements
 %             Lowering this value helps with obtaining a denser tetrahedral
 %             mesh. For dense meshes, values close to 3-5 are recommended.
-%          cfg.sizefield: [3] - mesh sizing field used at the mesh generation step.
-%             Higher values can help lowering the final mesh density.         
+%          cfg.smooth: [0] - number of iterations to smooth each tissue surface
 %          cfg.ratio: [1.414] radius-edge ratio. Lower values increase 
 %             the quality of tetrahedral elements, but results in denser meshes
-%          cfg.relabeling: [0] or 1 - This step removes most of the assumptions 
+%          cfg.dorelabel: [0] or 1 - This step removes most of the assumptions 
 %             created by the layered meshing workflow. Currently only works if all five tissue types are present.
 %             When deactivated, a 1 voxel length gap is assumed between each of the tissue layers.
-%          cfg.skullair: 0 or [1]. Within the skull layer, self-contained entities can be created. 
-%             By default, these entities are merged to the skull because they can be ambiguously be
-%             vessels or air. When the option 1 is chosen, these entities
-%             are labeled as air/background instead.
-%          cfg.wh: [0] or 1. by default, the mesh is truncated a few pixel in the 
+%          cfg.doairseg: 0 or [1]. Within the skull layer, additional segmentations can be found. 
+%             By default, these regions are merged to the skull because they can be ambiguously be
+%             vessels or air. When the option 1 is chosen, these regions are labeled as air instead.
+%          cfg.dotruncate: 0 or [1]. by default, the mesh is truncated a few pixel in the 
 %             +z direction below the lowest pixel containing CSF to focus on the brain areas. 
-%             A value of 1 gives a complete head mesh. 
+%             A value of 0 gives a complete head mesh. 
 % 
 % == Outputs ==
 %      node: node coordinates of the tetrahedral mesh
@@ -63,124 +61,102 @@ function [brain_n,brain_el,brain_f] = brain2mesh(seg,cfg)
 %
 
 %% Handling the inputs
-if nargin == 1
-elseif nargin ~= 2
-    error('Number of input parameters should be either 1 or 2') 
+if nargin == 0
+    help brain2mesh
+    return;
 end
 
-if (~exist('cfg'))
-    radbd=struct('wm',1.7,'gm',1.7,'csf',2.0,'skull',2.5,'scalp',3.0);
-    cfg = struct('ratio',1.414,'wh',0,'maxvol',30,'sizefield',3,'relabeling',0,'radbound',radbd,'skullair',1,'maxnode',120000);
-end
+density=struct('wm',2,'gm',2,'csf',5,'skull',4,'scalp',8);
+cfg=varargin2struct(varargin{:});
 
-if (~isfield(cfg,'ratio'))
-    cfg.ratio = 1.414;
-end
-if (~isfield(cfg,'wh'))
-    cfg.wh = 0;
-end
-if (~isfield(cfg,'maxvol'))
-    cfg.maxvol = 30;
-end
-if (~isfield(cfg,'sizefield'))
-    cfg.sizefield = 3;
-end
-if (~isfield(cfg,'relabeling'))
-    cfg.relabeling = 0;
-end
-if (~isfield(cfg,'samplingwm'))
-    cfg.samplingwm = 1.7;
-end
-if (~isfield(cfg,'samplinggm'))
-    cfg.samplinggm = 1.7;
-end
-if (~isfield(cfg,'samplingcsf'))
-    cfg.samplingcsf = 2.0;
-end
-if (~isfield(cfg,'samplingskull'))
-    cfg.samplingskull = 2.5;
-end
-if (~isfield(cfg,'samplingscalp'))
-    cfg.samplingscalp = 3.0;
-end
-if (~isfield(cfg,'skullair'))
-    cfg.skullair = 1;
-end
-if (~isfield(cfg,'maxnode'))
-    cfg.maxnode = 120000;
-end
+radbound=jsonopt('radbound',density,cfg);
+qratio=jsonopt('ratio',1.414,cfg);
+%sizefield=jsonopt('sizefield',100,cfg);
+maxvol=jsonopt('maxvol',100.414,cfg);
+maxnode=jsonopt('maxnode',100000,cfg);
+dotruncate=jsonopt('dotruncate',1,cfg);
+dorelabel=jsonopt('dorelabel',0,cfg);
+doairseg=jsonopt('doairseg',1,cfg);
+threshold=jsonopt('threshold',0.5,cfg);
+smooth=jsonopt('smooth',10,cfg);
+
+segname=fieldnames(density);
 
 if isstruct(seg)
     seg2 = seg;
-elseif size(seg,4) == 5
-    seg2.scalp = seg(:,:,:,1);
-    seg2.skull = seg(:,:,:,2);
-    seg2.csf = seg(:,:,:,3);
-    seg2.gm = seg(:,:,:,4);
-    seg2.wm = seg(:,:,:,5); 
-elseif size(seg,4) == 4
-    seg2.scalp = seg(:,:,:,1);
-    seg2.csf = seg(:,:,:,2);
-    seg2.gm = seg(:,:,:,3);
-    seg2.wm = seg(:,:,:,4);
-elseif size(seg,4) == 3
-    seg2.csf = seg(:,:,:,1);
-    seg2.gm = seg(:,:,:,2);
-    seg2.wm = seg(:,:,:,3);
+elseif(ndim(seg)==4)
+    for i=1:size(seg,4)
+        seg2.(segname{i})=seg(:,:,:,i);
+    end
 else
     fprintf('This seg input is currently not supported \n')
 end
 
-THRESH = 0.5;
-for i = 1:5
-    opt(i).maxnode = cfg.maxnode; 
+opt=struct;
+
+for i = 1:size(fieldnames(seg2))
+    opt(i).maxnode = maxnode; 
+    opt(i).radbound= radbound.(segname{i});
 end
-opt(1).radbound = cfg.samplingwm; opt(2).radbound = cfg.samplinggm; 
-opt(3).radbound = cfg.samplingcsf; opt(4).radbound = cfg.samplingskull; 
-opt(5).radbound = cfg.samplingscalp; 
+
 
 %% Pre-processing steps to create separations between the tissues in the
-%% volume space
+% volume space
+
 dim = size(seg2.wm);
 seg2.wm = imfill(seg2.wm,'holes');
 p_wm = seg2.wm;
 p_pial = p_wm+seg2.gm;
-p_pial = max(p_pial,max_filter(p_wm,3,1));
+p_pial = max(p_pial,imdilate(p_wm,true(3)));
 p_pial = imfill(p_pial,'holes');
 p_csf = p_pial+seg2.csf;
 p_csf(p_csf>1) = 1;
-p_csf = max(p_csf,max_filter(p_pial,3,1));
+p_csf = max(p_csf,imdilate(p_pial,true(3)));
+
 expandedGM = p_pial - seg2.wm - seg2.gm;
 expandedCSF = p_csf - seg2.wm - seg2.gm - seg2.csf - expandedGM;
-expandedGM = max_filter(expandedGM,3,1);
-expandedCSF = max_filter(expandedCSF,3,1);
+expandedGM = imdilate(expandedGM,true(3));
+expandedCSF = imdilate(expandedCSF,true(3));
+
 if isfield(seg2,'skull') && isfield(seg2,'scalp')
     p_bone = p_csf + seg2.skull;
     p_bone(p_bone>1) = 1;
-    p_bone = max(p_bone,max_filter(p_csf,3,1));
+    p_bone = max(p_bone,imdilate(p_csf,true(3)));
     p_skin = p_bone + seg2.scalp;
     p_skin(p_skin>1) = 1;
-    p_skin = max(p_skin,max_filter(p_bone,3,1));
+    p_skin = max(p_skin,imdilate(p_bone,true(3)));
 	expandedSkull = p_bone - seg2.wm - seg2.gm - seg2.csf - seg2.skull - expandedCSF - expandedGM;
-    expandedSkull = max_filter(expandedSkull,3,1);
+    expandedSkull = imdilate(expandedSkull,true(3));
 elseif isfield(seg2,'scalp') && ~isfield(seg2,'skull')
     p_skin = p_csf + seg2.scalp;
     p_skin(p_skin>1) = 1;
-    p_skin = max(p_skin,max_filter(p_csf,3,1));
+    p_skin = max(p_skin,imdilate(p_csf,true(3)));
 elseif isfield(seg2,'skull') && ~isfield(seg2,'scalp')
     p_bone = p_csf + seg2.skull;
     p_bone(p_bone>1) = 1;
-    p_bone = max(p_bone,max_filter(p_csf,3,1));
+    p_bone = max(p_bone,imdilate(p_csf,true(3)));
 end
 
 %% Grayscale/Binary extractions of the surface meshes for the different
-%% tissues
-[wm_n,wm_f] = v2s(p_wm,THRESH,opt(1),'cgalsurf');
-[pial_n,pial_f] = v2s(p_pial,THRESH,opt(2),'cgalsurf');
-[csf_n,csf_f] = v2s(p_csf,THRESH,opt(3),'cgalsurf');
+% tissues
+
+[wm_n,wm_f] = v2s(p_wm,threshold,opt(1),'cgalsurf');
+[pial_n,pial_f] = v2s(p_pial,threshold,opt(2),'cgalsurf');
+[csf_n,csf_f] = v2s(p_csf,threshold,opt(3),'cgalsurf');
+
+[wm_n,wm_f]=meshcheckrepair(wm_n,wm_f(:,1:3),'isolated');
+[pial_n,pial_f]=meshcheckrepair(pial_n,pial_f(:,1:3),'isolated');
+[csf_n,csf_f]=meshcheckrepair(csf_n,csf_f(:,1:3),'isolated');
+
+wm_n=sms(wm_n,wm_f,smooth,0.5,'lowpass');
+pial_n=sms(pial_n,pial_f,smooth,0.5,'lowpass');
+csf_n=sms(csf_n,csf_f,smooth,0.5,'lowpass');
+
 if isfield(seg2,'skull')
-    [bone_n,bone_f] = v2s(p_bone,THRESH,opt(4),'cgalsurf');
-    ISO2MESH_TETGENOPT = '-A';
+    [bone_n,bone_f] = v2s(p_bone,threshold,opt(4),'cgalsurf');
+    [bone_n,bone_f]=meshcheckrepair(bone_n,bone_f(:,1:3),'isolated');
+    bone_n=sms(bone_n,bone_f,smooth,0.5,'lowpass');
+
     [bone_node,el_bone] = surf2mesh(bone_n,bone_f,[],[],1.0,30,[],[],0,'tetgen1.5');
     for i = 1:length(unique(el_bone(:,5)))
         vol_bone(i) = sum(elemvolume(bone_node,el_bone(el_bone(:,5)==i,1:4)));
@@ -195,20 +171,23 @@ if isfield(seg2,'skull')
     [bone_f2] = volface(el_bone(:,1:4));
     bone_f2 = removedupelem(bone_f2);
     [bone_n2,bone_f2]=removeisolatednode(bone_n2,bone_f2);
-    if cfg.skullair == 0
+    if doairseg == 0
         bone_n = bone_n2; bone_f = bone_f2;
     end
 end
 if isfield(seg2,'scalp')
-    [skin_n,skin_f] = v2s(p_skin,THRESH,opt(5),'cgalsurf');
+    [skin_n,skin_f] = v2s(p_skin,threshold,opt(5),'cgalsurf');
+    [skin_n,skin_f]=meshcheckrepair(skin_n,skin_f(:,1:3),'isolated');
+    skin_n=sms(skin_n,skin_f,smooth,0.5,'lowpass');
 end
 
 %% Main loop for the meshing pipeline to combine the individual surface
-%% meshes or each of the tissues and to generate the detailed 3D tetrahedral
-%% mesh of the brain/head
+% meshes or each of the tissues and to generate the detailed 3D tetrahedral
+% mesh of the brain/head
+
 for loop = 1:2
     %% If the first pass fails, a second pass is called using the decoupled function
-    %% to eliminate intersections between surface meshes
+    % to eliminate intersections between surface meshes
     if (loop==2) && (exist('label_elem'))
         continue;
     end
@@ -228,20 +207,18 @@ for loop = 1:2
     end
     
     %% If the whole head option is deactivated, the cut is made at the base of the brain using a box cutting
-    if (cfg.wh == 0)
+    if (dotruncate==1)
         dim2 = min(csf_n);
-        ISO2MESH_TETGENOPT = '-A';
         [no,f]=meshabox([-1 -1 dim2(3)+4.1],[dim(1)+1 dim(2)+1 dim(3)+1],500);
         [no,f]=removeisolatednode(no,f);
         [final_n,final_f] = surfboolean(no,f(:,[1 3 2]),'first',final_n,final_f);
     end
     
     %% Generates a coarse tetrahedral mesh of the combined tissues
-    ISO2MESH_TETGENOPT = '-A ';
     [final_n,final_e,~] = surf2mesh(final_n,final_f,[],[],1.0,30,[],[],0,'tetgen1.5');
 
     %% Removes the elements that are part of the box, but not the brain/head
-    if (cfg.wh == 0)
+    if (dotruncate == 1)
         [~, M] = max(final_n);
         k = find(final_e(:,1:4)==M(3),1);
         final_e = final_e(final_e(:,5)~=final_e(rem(k,length(final_e(:,1))),5),:);
@@ -249,7 +226,7 @@ for loop = 1:2
     end
 
     %% Here the labels created through the coarse mesh generated through Tetgen are saved
-    %% with the centroid of one of the elements for intriangulation seg(:,:,:,1)testing later
+    % with the centroid of one of the elements for intriangulation seg(:,:,:,1)testing later
     label = unique(final_e(:,5)); 
     for i = 1:length(label)
         label_elem(i,1) = find(final_e(:,5) == label(i),1);
@@ -257,7 +234,6 @@ for loop = 1:2
     end
 
     if isfield(seg2,'scalp')
-        ISO2MESH_TETGENOPT = '-A';
         [no_skin,el_skin] = surf2mesh(skin_n,skin_f,[],[],1.0,30,[],[],0,'tetgen1.5');
         for i = 1:length(unique(el_skin(:,5)))
             vol_skin(i) = sum(elemvolume(no_skin,el_skin(el_skin(:,5)==i,1:4)));
@@ -277,8 +253,8 @@ for loop = 1:2
     end
     
     %% When the label_elem does not exist, it often indicates a failure at the generation of a coarse
-    %% tetrahedral mesh. The alternative meshing pathway using decoupling is then called to make a
-    %% second attempt at creating the combined tetrahedral mesh.
+    % tetrahedral mesh. The alternative meshing pathway using decoupling is then called to make a
+    % second attempt at creating the combined tetrahedral mesh.
     if (~exist('label_elem'))&& (loop==1)
         fprintf('Initial meshing procedure failed. The option parameter might need to be adjusted. \n')
         fprintf('Activating alternative meshing pathway... \n')
@@ -287,7 +263,7 @@ for loop = 1:2
     end
     
     %% The labels are given to each of the tissues
-    %% WM(1) - GM(2) - CSF(3) - Bone(4) - Scalp(5) - Air(6)
+    % WM(1) - GM(2) - CSF(3) - Bone(4) - Scalp(5) - Air(6)
     for i = 1:length(label_elem(:,1))
          if (exist('bone_n') && exist('no_air2'))
             if intriangulation(no_air2,f_air2(:,1:3),label_centroid(i,:))
@@ -340,9 +316,10 @@ for loop = 1:2
     [node,face] = removeisolatednode(final_n,face);
 
     %% The final mesh is generated here with the desired properties
-    ISO2MESH_TETGENOPT = sprintf('-A -Rmpq%fa%i',cfg.ratio,cfg.maxvol);
-    node(:,4) = cfg.sizefield*ones(length(node(:,1)),1);
+    ISO2MESH_TETGENOPT = sprintf('-A -Rmpq%fa%i',qratio,maxvol);
+    %node(:,4) = sizefield(:).*ones(length(node(:,1)),1);
     [brain_n,brain_el,brain_f] = surf2mesh(node,face,[],[],1.0,10,[],[],0,'tetgen1.5');
+    clear ISO2MESH_TETGENOPT;
 
     label2 = unique(brain_el(:,5)); 
     for i = 1:length(label2)
@@ -351,7 +328,7 @@ for loop = 1:2
     end
     
     %% The labeling process is repeated for the final mesh
-    %% WM(1) - GM(2) - CSF(3) - Bone(4) - Scalp(5) - Air(6)
+    % WM(1) - GM(2) - CSF(3) - Bone(4) - Scalp(5) - Air(6)
     for i = 1:length(label_brain_el(:,1))
          if (exist('bone_n') && exist('no_air2'))
             if intriangulation(no_air2,f_air2(:,1:3),label_centroid2(i,:))
@@ -394,8 +371,9 @@ for loop = 1:2
         brain_el(i,5) = label_label2(brain_el(i,5));
     end
 end
+
 %% Relabeling step to remove layered assumptions
-if cfg.relabeling == 1 && (isfield(seg2,'skull') && isfield(seg2,'scalp')) 
+if dorelabel == 1 && (isfield(seg2,'skull') && isfield(seg2,'scalp')) 
     centroid = meshcentroid(brain_n(:,1:3),brain_el(:,1:4));centroid = ceil(centroid);
     tag = zeros(length(brain_el(:,1)),1);
     facenb = faceneighbors(brain_el(:,1:4));
@@ -460,5 +438,5 @@ if cfg.relabeling == 1 && (isfield(seg2,'skull') && isfield(seg2,'scalp'))
         end
     end
 end
+
 brain_el(:,5) = 6 - brain_el(:,5);
-end

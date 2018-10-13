@@ -23,9 +23,8 @@ Anh Phong Tran and Qianqian Fang, "[Fast and high-quality tetrahedral mesh gener
 The Brain2Mesh toolbox is also extensively dependent on:
 1. Iso2Mesh toolbox (http://iso2mesh.sf.net)
    Not included - use the latest version at: https://github.com/fangq/iso2mesh
-2. MATLAB Image-Processing toolbox (such as imfill)
+2. MATLAB Image-Processing toolbox (such as imfill, imdilate)
 3. intriangulation.m (by Adam Aitkenhead and Johannes Korsawe)
-4. max_filter.m
 
 ## Overview of the functions
 
