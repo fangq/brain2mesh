@@ -312,9 +312,7 @@ for loop = 1:2
             label_label(i,1) = 6;
         end
     end
-    for i = 1:length(final_e(:,1))
-        final_e(i,5) = label_label(final_e(i,5));
-    end
+    final_e(:,5)=label_label(final_e(:,5));
 
     %% This step consolidates adjacent labels of the same tissue
     new_label = unique(final_e(:,5));
@@ -377,10 +375,7 @@ for loop = 1:2
             label_label2(i,1) = 6;
         end
     end
-
-    for i = 1:length(brain_el(:,1))
-        brain_el(i,5) = label_label2(brain_el(i,5));
-    end
+    brain_el(:,5)=label_label2(brain_el(:,5));
 end
 
 %% Relabeling step to remove layered assumptions
