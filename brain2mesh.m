@@ -238,11 +238,8 @@ for loop = 1:2
 
     %% Here the labels created through the coarse mesh generated through Tetgen are saved
     % with the centroid of one of the elements for intriangulation seg(:,:,:,1)testing later
-    label = unique(final_e(:,5)); 
-    for i = 1:length(label)
-        label_elem(i,1) = find(final_e(:,5) == label(i),1);
-        label_centroid(i,:) = meshcentroid(final_n,final_e(label_elem(i),1:4));
-    end
+    [label, label_elem] = unique(final_e(:,5)); 
+    label_centroid=meshcentroid(final_n,final_e(label_elem,1:4));
 
     if isfield(seg2,'scalp')
         [no_skin,el_skin] = s2m(skin_n,skin_f,1.0,maxvol,'tetgen1.5');
@@ -275,44 +272,29 @@ for loop = 1:2
     
     %% The labels are given to each of the tissues
     % WM(1) - GM(2) - CSF(3) - Bone(4) - Scalp(5) - Air(6)
-    for i = 1:length(label_elem(:,1))
-         if (exist('bone_n') && exist('no_air2'))
-            if intriangulation(no_air2,f_air2(:,1:3),label_centroid(i,:))
-                label_label(i,1) = 6;
-                continue;
-            end
-        end
-        if (exist('no_skin') && exist('no_air'))
-            if intriangulation(no_air,f_air(:,1:3),label_centroid(i,:))
-                label_label(i,1) = 6;
-                continue;
-            end
-        end
-        if intriangulation(wm_n,wm_f(:,1:3),label_centroid(i,:))
-            label_label(i,1) = 1;
-        elseif intriangulation(pial_n,pial_f(:,1:3),label_centroid(i,:))
-            label_label(i,1) = 2;  
-        elseif intriangulation(csf_n,csf_f(:,1:3),label_centroid(i,:))
-            label_label(i,1) = 3; 
-        elseif (exist('bone_n2'))
-            if intriangulation(bone_n2,bone_f2(:,1:3),label_centroid(i,:))
-                label_label(i,1) = 4;   
-            elseif intriangulation(no_skin,f_skin(:,1:3),label_centroid(i,:))
-                label_label(i,1) = 5;
-            else
-                label_label(i,1) = 6;
-            end
-        elseif (exist('no_skin'))
-            if intriangulation(no_skin,f_skin(:,1:3),label_centroid(i,:))
-                label_label(i,1) = 5;
-            else
-                label_label(i,1) = 6;
-            end
-        else
-            label_label(i,1) = 6;
-        end
+    newlabel = zeros(length(label_elem),1);
+    if (exist('bone_n') && exist('no_air2'))
+        newlabel= intriangulation(no_air2,f_air2(:,1:3),label_centroid);
     end
-    final_e(:,5)=label_label(final_e(:,5));
+    if (exist('no_skin') && exist('no_air'))
+        newlabel= newlabel | intriangulation(no_air,f_air(:,1:3),label_centroid);
+    end
+    newlabel=double(newlabel);
+    idx=find(newlabel==0);
+    
+    newtag=zeros(length(idx),1);
+    newtag=intriangulation(wm_n,wm_f(:,1:3),label_centroid(idx,:))*6;
+    newtag=max(newtag,intriangulation(pial_n,pial_f(:,1:3),label_centroid(idx,:))*5);
+    newtag=max(newtag,intriangulation(csf_n,csf_f(:,1:3),label_centroid(idx,:))*4);
+    if(exist('bone_n2'))
+        newtag=max(newtag,intriangulation(bone_n2,bone_f2(:,1:3),label_centroid(idx,:))*3);
+    end
+    if(exist('no_skin'))
+        newtag=max(newtag,intriangulation(no_skin,f_skin(:,1:3),label_centroid(idx,:))*2);
+    end
+    newlabel(idx)=newtag;
+    newlabel=7-newlabel;
+    final_e(:,5)=newlabel(final_e(:,5));
 
     %% This step consolidates adjacent labels of the same tissue
     new_label = unique(final_e(:,5));
@@ -330,52 +312,34 @@ for loop = 1:2
     [brain_n,brain_el,brain_f] = s2m(node,face,1.0,maxvol,'tetgen1.5');
     clear ISO2MESH_TETGENOPT;
 
-    label2 = unique(brain_el(:,5)); 
-    for i = 1:length(label2)
-        label_brain_el(i,1) = find(brain_el(:,5) == label2(i),1);
-        label_centroid2(i,:) = meshcentroid(brain_n,brain_el(label_brain_el(i),1:4));
-    end
+    [label2, label_brain_el] = unique(brain_el(:,5)); 
+    label_centroid2=meshcentroid(brain_n,brain_el(label_brain_el,1:4));
     
     %% The labeling process is repeated for the final mesh
     % WM(1) - GM(2) - CSF(3) - Bone(4) - Scalp(5) - Air(6)
-    for i = 1:length(label_brain_el(:,1))
-         if (exist('bone_n') && exist('no_air2'))
-            if intriangulation(no_air2,f_air2(:,1:3),label_centroid2(i,:))
-                label_label2(i,1) = 6;
-                continue;
-            end
-        end
-        if (exist('no_skin') && exist('no_air'))
-            if intriangulation(no_air,f_air(:,1:3),label_centroid2(i,:))
-                label_label2(i,1) = 6;
-                continue;
-            end
-        end
-        if intriangulation(wm_n,wm_f(:,1:3),label_centroid2(i,:))
-            label_label2(i,1) = 1;
-        elseif intriangulation(pial_n,pial_f(:,1:3),label_centroid2(i,:))
-            label_label2(i,1) = 2;  
-        elseif intriangulation(csf_n,csf_f(:,1:3),label_centroid2(i,:))
-            label_label2(i,1) = 3; 
-        elseif (exist('bone_n2'))
-            if intriangulation(bone_n2,bone_f2(:,1:3),label_centroid2(i,:))
-                label_label2(i,1) = 4;   
-            elseif intriangulation(no_skin,f_skin(:,1:3),label_centroid2(i,:))
-                label_label2(i,1) = 5;
-            else
-                label_label2(i,1) = 6;
-            end
-        elseif (exist('no_skin'))
-            if intriangulation(no_skin,f_skin(:,1:3),label_centroid2(i,:))
-                label_label2(i,1) = 5;
-            else
-                label_label2(i,1) = 6;
-            end
-        else
-            label_label2(i,1) = 6;
-        end
+    newlabel = zeros(length(label_brain_el),1);
+    if (exist('bone_n') && exist('no_air2'))
+        newlabel= intriangulation(no_air2,f_air2(:,1:3),label_centroid2);
     end
-    brain_el(:,5)=label_label2(brain_el(:,5));
+    if (exist('no_skin') && exist('no_air'))
+        newlabel= newlabel | intriangulation(no_air,f_air(:,1:3),label_centroid2);
+    end
+    newlabel=double(newlabel);
+    idx=find(newlabel==0);
+    
+    newtag=zeros(length(idx),1);
+    newtag=intriangulation(wm_n,wm_f(:,1:3),label_centroid2(idx,:))*6;
+    newtag=max(newtag,intriangulation(pial_n,pial_f(:,1:3),label_centroid2(idx,:))*5);
+    newtag=max(newtag,intriangulation(csf_n,csf_f(:,1:3),label_centroid2(idx,:))*4);
+    if(exist('bone_n2'))
+        newtag=max(newtag,intriangulation(bone_n2,bone_f2(:,1:3),label_centroid2(idx,:))*3);
+    end
+    if(exist('no_skin'))
+        newtag=max(newtag,intriangulation(no_skin,f_skin(:,1:3),label_centroid2(idx,:))*2);
+    end
+    newlabel(idx)=newtag;
+    newlabel=7-newlabel;
+    brain_el(:,5)=newlabel(brain_el(:,5));
 end
 
 %% Relabeling step to remove layered assumptions
