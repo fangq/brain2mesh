@@ -77,9 +77,11 @@ if(~exist('intriangulation','file'))
 end
 
 density=struct('wm',2,'gm',2,'csf',5,'skull',4,'scalp',8);
+adaptiveness=struct('wm',1,'gm',1,'csf',1,'skull',1,'scalp',1);
 cfg=varargin2struct(varargin{:});
 
 radbound=jsonopt('radbound',density,cfg);
+distbound=jsonopt('distbound',adaptiveness,cfg);
 qratio=jsonopt('ratio',1.414,cfg);
 %sizefield=jsonopt('sizefield',100,cfg);
 maxvol=jsonopt('maxvol',100.414,cfg);
@@ -106,7 +108,10 @@ opt=struct;
 
 for i = 1:size(fieldnames(seg2))
     opt(i).maxnode = maxnode; 
-    opt(i).radbound= radbound.(segname{i});
+    if(isfield(radbound,segname{i}))
+        opt(i).radbound= radbound.(segname{i});
+    end
+    %opt(i).distbound= distbound.(segname{i});
 end
 
 cube3=true(3,3,3);
@@ -155,20 +160,21 @@ end
 [pial_n,pial_f] = v2s(p_pial,threshold,opt(2),'cgalsurf');
 [csf_n,csf_f] = v2s(p_csf,threshold,opt(3),'cgalsurf');
 
-[wm_n,wm_f]=meshcheckrepair(wm_n,wm_f(:,1:3),'isolated');
-[pial_n,pial_f]=meshcheckrepair(pial_n,pial_f(:,1:3),'isolated');
-[csf_n,csf_f]=meshcheckrepair(csf_n,csf_f(:,1:3),'isolated');
-
-wm_n=sms(wm_n,wm_f,smooth,0.5,'lowpass');
-pial_n=sms(pial_n,pial_f,smooth,0.5,'lowpass');
-csf_n=sms(csf_n,csf_f,smooth,0.5,'lowpass');
+% [wm_n,wm_f]=meshcheckrepair(wm_n,wm_f(:,1:3),'isolated');
+% [pial_n,pial_f]=meshcheckrepair(pial_n,pial_f(:,1:3),'isolated');
+% [csf_n,csf_f]=meshcheckrepair(csf_n,csf_f(:,1:3),'isolated');
+% 
+% wm_n=sms(wm_n,wm_f,smooth,0.5,'lowpass');
+% pial_n=sms(pial_n,pial_f,smooth,0.5,'lowpass');
+% csf_n=sms(csf_n,csf_f,smooth,0.5,'lowpass');
 
 if isfield(seg2,'skull')
-    [bone_n,bone_f] = v2s(p_bone,threshold,opt(4),'cgalsurf');
-    [bone_n,bone_f]=meshcheckrepair(bone_n,bone_f(:,1:3),'isolated');
-    bone_n=sms(bone_n,bone_f,smooth,0.5,'lowpass');
+    optskull=struct('radbound',radbound.skull,'maxnode',maxnode);
+    [bone_n,bone_f] = v2s(p_bone,threshold,optskull,'cgalsurf');
+    %[bone_n,bone_f]=meshcheckrepair(bone_n,bone_f(:,1:3),'isolated');
+    %bone_n=sms(bone_n,bone_f,smooth,0.5,'lowpass');
 
-    [bone_node,el_bone] = s2m(bone_n,bone_f,1.0,maxvol,'tetgen1.5');
+    [bone_node,el_bone] = s2m(bone_n,bone_f,1.0,maxvol,'tetgen1.5',[],[],'-A');
     for i = 1:length(unique(el_bone(:,5)))
         vol_bone(i) = sum(elemvolume(bone_node,el_bone(el_bone(:,5)==i,1:4)));
     end
@@ -187,9 +193,10 @@ if isfield(seg2,'skull')
     end
 end
 if isfield(seg2,'scalp')
-    [skin_n,skin_f] = v2s(p_skin,threshold,opt(5),'cgalsurf');
-    [skin_n,skin_f]=meshcheckrepair(skin_n,skin_f(:,1:3),'isolated');
-    skin_n=sms(skin_n,skin_f,smooth,0.5,'lowpass');
+    optscalp=struct('radbound',radbound.scalp,'maxnode',maxnode);
+    [skin_n,skin_f] = v2s(p_skin,threshold,optscalp,'cgalsurf');
+    %[skin_n,skin_f]=meshcheckrepair(skin_n,skin_f(:,1:3),'isolated');
+    %skin_n=sms(skin_n,skin_f,smooth,0.5,'lowpass');
 end
 
 %% Main loop for the meshing pipeline to combine the individual surface
@@ -208,25 +215,36 @@ for loop = 1:2
         [pial_n,pial_f] = surfboolean(pial_n(:,1:3),pial_f(:,1:3),'decouple',csf_n(:,1:3),csf_f(:,1:3));
         [wm_n,wm_f] = surfboolean(wm_n(:,1:3),wm_f(:,1:3),'decouple',pial_n(:,1:3),pial_f(:,1:3));
     end
-    [final_n,final_f] = surfboolean(wm_n(:,1:3),wm_f(:,1:3),'resolve',pial_n,pial_f);
-    [final_n,final_f] = surfboolean(final_n,final_f,'resolve',csf_n,csf_f);
+    [surf_n,surf_f] = surfboolean(wm_n(:,1:3),wm_f(:,1:3),'resolve',pial_n,pial_f);
+    [surf_n,surf_f] = surfboolean(surf_n,surf_f,'resolve',csf_n,csf_f);
     if isfield(seg2,'skull')
-    [final_n,final_f] = surfboolean(final_n,final_f,'resolve',bone_n,bone_f);
+        [surf_n,surf_f] = surfboolean(surf_n,surf_f,'resolve',bone_n,bone_f);
     end
     if isfield(seg2,'scalp')
-    [final_n,final_f] = surfboolean(final_n,final_f,'resolve',skin_n,skin_f);
+        [surf_n,surf_f] = surfboolean(surf_n,surf_f,'resolve',skin_n,skin_f);
     end
-    
+    final_surf_n=surf_n;
+    final_surf_f=surf_f;
     %% If the whole head option is deactivated, the cut is made at the base of the brain using a box cutting
     if (dotruncate==1)
+        dim=max(surf_n);
         dim2 = min(csf_n);
-        [no,f]=meshabox([-1 -1 dim2(3)+4.1],[dim(1)+1 dim(2)+1 dim(3)+1],500);
-        [no,f]=removeisolatednode(no,f);
-        [final_n,final_f] = surfboolean(no,f(:,[1 3 2]),'first',final_n,final_f);
+        [nbox,fbox,ebox]=meshabox([-1 -1 dim2(3)+4.1],[dim(1)+1 dim(2)+1 dim(3)+1],500);
+        fbox=volface(ebox);
+        [nbox,fbox]=removeisolatednode(nbox,fbox);
+        [final_surf_n,final_surf_f] = surfboolean(nbox,fbox(:,[1 3 2]),'first',surf_n,surf_f);
     end
     
     %% Generates a coarse tetrahedral mesh of the combined tissues
-    [final_n,final_e] = s2m(final_n,final_f,1.0,maxvol,'tetgen1.5');
+    try
+        [final_n,final_e] = s2m(final_surf_n,final_surf_f,1.0,maxvol,'tetgen1.5',[],[],'-A');
+    catch
+        fprintf('volumetric mesh generation failed, returning the intermediate surface model only');
+        brain_n=final_surf_n;
+        brain_f=final_surf_f;
+        brain_el=[];
+        return;
+    end
 
     %% Removes the elements that are part of the box, but not the brain/head
     if (dotruncate == 1)
@@ -242,7 +260,7 @@ for loop = 1:2
     label_centroid=meshcentroid(final_n,final_e(label_elem,1:4));
 
     if isfield(seg2,'scalp')
-        [no_skin,el_skin] = s2m(skin_n,skin_f,1.0,maxvol,'tetgen1.5');
+        [no_skin,el_skin] = s2m(skin_n,skin_f,1.0,maxvol,'tetgen1.5',[],[],'-A');
         for i = 1:length(unique(el_skin(:,5)))
             vol_skin(i) = sum(elemvolume(no_skin,el_skin(el_skin(:,5)==i,1:4)));
         end
@@ -307,10 +325,9 @@ for loop = 1:2
     [node,face] = removeisolatednode(final_n,face);
 
     %% The final mesh is generated here with the desired properties
-    ISO2MESH_TETGENOPT = sprintf('-A -Rmpq%fa%i',qratio,maxvol);
+    cmdopt = sprintf('-A -pq%fa%f',qratio,maxvol);
     %node(:,4) = sizefield(:).*ones(length(node(:,1)),1);
-    [brain_n,brain_el,brain_f] = s2m(node,face,1.0,maxvol,'tetgen1.5');
-    clear ISO2MESH_TETGENOPT;
+    [brain_n,brain_el,brain_f] = s2m(node,face,1.0,maxvol,'tetgen1.5',[],[],cmdopt);
 
     [label2, label_brain_el] = unique(brain_el(:,5)); 
     label_centroid2=meshcentroid(brain_n,brain_el(label_brain_el,1:4));
