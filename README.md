@@ -19,10 +19,6 @@ volumes and surfaces into a high-quality multi-layered tetrahedral brain/full he
 This tool does not handle the segmentation of MRI scans, but examples of how commonly 
 encountered segmented datasets can be used to create meshes are available under the "examples" folder.
 
-The details of this toolbox can be found in the following paper:
-
-Anh Phong Tran and Qianqian Fang, "[Fast and high-quality tetrahedral mesh generation from neuroanatomical scans](https://arxiv.org/abs/1708.08954),". In: arXiv pre-print (August 2017). arXiv:1708.08954v1 [physics.med-ph]
-
 The Brain2Mesh toolbox is also extensively dependent on:
 1. Iso2Mesh toolbox (http://iso2mesh.sf.net), not included, download at https://github.com/fangq/iso2mesh
 2. MATLAB Image-Processing toolbox (such as imfill, imdilate)
