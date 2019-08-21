@@ -23,8 +23,8 @@ end
 
 %% The one liner brain2mesh is called. The third parameter controls activates the whole head
 %% pathway
-cfg.wh = 1;
-[node,elem,face] = brain2mesh(seg);
+cfg.dotruncate = 1;
+[node,elem,face] = brain2mesh(seg,cfg);
 
 
 %% Plotting of the result
