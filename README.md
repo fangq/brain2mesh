@@ -16,6 +16,8 @@
 The Brain2Mesh toolbox provides a streamlined matlab function to convert a segmented brain 
 volumes and surfaces into a high-quality multi-layered tetrahedral brain/full head mesh. 
 
+The details of this toolbox is described in the paper listed in the [Reference](#reference) section.
+
 This tool does not handle the segmentation of MRI scans, but examples of how commonly 
 encountered segmented datasets can be used to create meshes are available under the "examples" folder.
 
@@ -41,13 +43,22 @@ Your acknowledgement of brain2mesh in your publications or presentations
 would be greatly appreciated by the authors of this toolbox. The citation 
 information can be found in the Introduction section.
 
+## Reference 
+
+If you use Brain2Mesh or Brain Mesh Library in your publications, the authors of this toolbox 
+greatly appreciate if you can cite the below paper
+
+```
+Anh Phong Tran†, Shijie Yan†, Qianqian Fang*, (2020) "Improving model-based fNIRS analysis using mesh-based anatomical and light-transport models," Neurophotonics, in press
+```
+
 ## Acknowledgement 
 
 This project is funded by the National Institutes of Health (NIH) / National Institute of General 
 Medical Sciences (NIGMS) under the grant number R01-GM114365, and NIH/NINID/NIBIB under the grant
 number R01-EB026998.
 
-###  Copyright disclaimer for intriangulation.m
+###  Copyright disclaimer for `intriangulation.m`
 
 Copyright (c) 2016, Johannes Korsawe
 Copyright (c) 2013, Adam H. Aitkenhead
