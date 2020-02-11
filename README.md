@@ -48,9 +48,7 @@ information can be found in the Introduction section.
 If you use Brain2Mesh or Brain Mesh Library in your publications, the authors of this toolbox 
 greatly appreciate if you can cite the below paper
 
-```
-Anh Phong Tran†, Shijie Yan†, Qianqian Fang*, (2020) "Improving model-based fNIRS analysis using mesh-based anatomical and light-transport models," Neurophotonics, in press
-```
+* Anh Phong Tran†, Shijie Yan†, Qianqian Fang*, (2020) "Improving model-based fNIRS analysis using mesh-based anatomical and light-transport models," Neurophotonics, in press, pre-print: https://www.biorxiv.org/content/10.1101/2020.02.07.939447v1
 
 ## Acknowledgement 
 
