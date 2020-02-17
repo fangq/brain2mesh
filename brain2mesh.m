@@ -67,7 +67,7 @@ if nargin == 0
 end
 
 if(~exist('v2m','file'))
-    error('Missing dependency. You must download and addpath to brain2mesh.m, URL: https://github.com/fangq/brain2mesh')
+    error('Missing dependency. You must download and addpath to Iso2Mesh Toolbox, URL: https://github.com/fangq/iso2mesh')
 end
 if(~exist('imfill','file'))
     error('Missing dependency. You must install MATLAB image processing toolbox')
