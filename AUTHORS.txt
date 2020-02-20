@@ -1,7 +1,7 @@
 Brain2Mesh is written by 
 
 ==============================================================
-Copyright (C) 2017-2020  Qianqian Fang <q.fang at neu.edu>
+Copyright (C) 2011,2017-2020  Qianqian Fang <q.fang at neu.edu>
 
 Dr. Qianqian is currently an Assistant Professor in the 
 Department of Bioengineering at Northeastern University.

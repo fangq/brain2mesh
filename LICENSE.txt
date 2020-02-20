@@ -3,7 +3,7 @@
 =               A one-liner for human brain 3D mesh generation                =
 ===============================================================================
 
-Copyright (C) 2017-2020  Qianqian Fang <q.fang at neu.edu>
+Copyright (C) 2011,2017-2020  Qianqian Fang <q.fang at neu.edu>
 Copyright (C) 2017-2018  Anh Phong Tran <tran.anh at husky.neu.edu>
 
 -------------------------------------------------------------------------------
