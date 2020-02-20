@@ -1,0 +1,28 @@
+Brain2Mesh is written by 
+
+==============================================================
+Copyright (C) 2017-2020  Qianqian Fang <q.fang at neu.edu>
+
+Dr. Qianqian is currently an Assistant Professor in the 
+Department of Bioengineering at Northeastern University.
+
+Address: Dept. of Bioengineering
+         Northeastern University
+         360 Huntington Ave, ISEC 206, Boston, MA 02115, USA
+URL: http://fanglab.org
+Email: <q.fang at neu.edu>
+
+Brain2Mesh Website : http://mcx.space/brain2mesh
+
+===============================================================
+Copyright (C) 2017-2018  Anh Phong Tran <tran.anh at husky.neu.edu>
+
+As a former PhD student in Dr. Fang's lab, Phong wrote the initial
+version of the brain2mesh, adapted from an earlier script written by
+Dr. Fang
+
+https://github.com/fangq/Colin27BrainMesh/blob/master/colinsmesh_v2.m
+http://mcx.space/wiki/index.cgi?MMC/Colin27AtlasMesh/Version2
+
+Email: <tran.anh at husky.neu.edu>
+
