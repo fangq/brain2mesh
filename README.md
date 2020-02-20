@@ -1,13 +1,12 @@
 # Brain2mesh: a one-liner for human brain 3D mesh generation
 
-* Authors: 
-  * Anh Phong Tran <tran.anh at husky.neu.edu>, and
-  * Qianqian Fang <q.fang at neu.edu>
+* Version: 0.8
+* Project Maintainer: Qianqian Fang <q.fang at neu.edu>
+* Contributors: See AUTHORS.txt for details
 * Address:
   * Department of Bioengineering
   * Northeastern University
   * 360 Huntington Ave, Boston, MA 02115
-* Version: 0.5.0
 * License: GPL v2 or later, see LICENSE.txt
 * URL: http://mcx.space/brain2mesh
 

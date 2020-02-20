@@ -1,6 +1,12 @@
 function [brain_n,brain_el,brain_f] = brain2mesh(seg,varargin)
 %
 % Brain2mesh: a one-liner for human brain 3D mesh generation
+%
+% Author: Qianqian Fang <q.fang at neu.edu>
+% Other contributors: see AUTHORS.txt for details
+% Version: 0.8
+% URL: http://mcx.space/brain2mesh
+% License: GPL version 2
 % 
 % == Format == 
 % [node,elem,face] = brain2mesh(seg,cfg); 
@@ -54,10 +60,12 @@ function [brain_n,brain_el,brain_f] = brain2mesh(seg,varargin)
 % Tissue ID for the outputs are as follow:
 % 0-Air/background, 1-Scalp, 2-Skull, 3-CSF, 4-GM, 5-WM, 6-air pockets
 % 
-% == Methodology ==
-% The underlying methodology behind this function is described in:
-% Anh Phong Tran and Qianqian Fang, "Fast and high-quality tetrahedral mesh generation \
-% from neuroanatomical scans,". In: arXiv pre-print (August 2017). arXiv:1708.08954v1 [physics.med-ph]
+% == Reference ==
+% If you use Brain2Mesh in your publication, please cite the below paper:
+%
+% Anh Phong Tran, Shijie Yan and Qianqian Fang, "Improving model-based
+% fNIRS analysis using mesh-based anatomical and light-transport models,"
+% Neurophotonics, in-press  
 %
 
 %% Handling the inputs
@@ -90,7 +98,7 @@ dotruncate=jsonopt('dotruncate',1,cfg);
 dorelabel=jsonopt('dorelabel',0,cfg);
 doairseg=jsonopt('doairseg',1,cfg);
 threshold=jsonopt('threshold',0.5,cfg);
-smooth=jsonopt('smooth',10,cfg);
+smooth=jsonopt('smooth',0,cfg);
 
 segname=fieldnames(density);
 
@@ -160,13 +168,19 @@ end
 [pial_n,pial_f] = v2s(p_pial,threshold,opt(2),'cgalsurf');
 [csf_n,csf_f] = v2s(p_csf,threshold,opt(3),'cgalsurf');
 
-% [wm_n,wm_f]=meshcheckrepair(wm_n,wm_f(:,1:3),'isolated');
-% [pial_n,pial_f]=meshcheckrepair(pial_n,pial_f(:,1:3),'isolated');
-% [csf_n,csf_f]=meshcheckrepair(csf_n,csf_f(:,1:3),'isolated');
-% 
-% wm_n=sms(wm_n,wm_f,smooth,0.5,'lowpass');
-% pial_n=sms(pial_n,pial_f,smooth,0.5,'lowpass');
-% csf_n=sms(csf_n,csf_f,smooth,0.5,'lowpass');
+[wm_n,wm_f]=meshcheckrepair(wm_n,wm_f(:,1:3),'isolated');
+[pial_n,pial_f]=meshcheckrepair(pial_n,pial_f(:,1:3),'isolated');
+[csf_n,csf_f]=meshcheckrepair(csf_n,csf_f(:,1:3),'isolated');
+
+if(smooth>0)
+    wm_n=sms(wm_n,wm_f,smooth,0.5,'lowpass');
+    pial_n=sms(pial_n,pial_f,smooth,0.5,'lowpass');
+    csf_n=sms(csf_n,csf_f,smooth,0.5,'lowpass');
+    
+    [wm_n,wm_f]=meshcheckrepair(wm_n,wm_f(:,1:3),'meshfix');
+    [pial_n,pial_f]=meshcheckrepair(pial_n,pial_f(:,1:3),'meshfix');
+    [csf_n,csf_f]=meshcheckrepair(csf_n,csf_f(:,1:3),'meshfix');
+end
 
 if isfield(seg2,'skull')
     optskull=struct('radbound',radbound.skull,'maxnode',maxnode);
