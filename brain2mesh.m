@@ -7,11 +7,15 @@ function [brain_n,brain_el,brain_f] = brain2mesh(seg,varargin)
 % Version: 0.8
 % URL: http://mcx.space/brain2mesh
 % License: GPL version 2
+% Reference: 
+%  Anh Phong Tran, Shijie Yan and Qianqian Fang, "Improving model-based
+%  fNIRS analysis using mesh-based anatomical and light-transport models,"
+%  Neurophotonics, 7(1), 015008, URL: http://dx.doi.org/10.1117/1.NPh.7.1.015008
 % 
 % == Format == 
-% [node,elem,face] = brain2mesh(seg,cfg); 
-%     or 
 % [node,elem,face] = brain2mesh(seg)
+%     or 
+% [node,elem,face] = brain2mesh(seg,cfg); 
 % 
 % == Input ==
 %      seg: pre-segmented brain volume (supporting both probalistic tissue 
@@ -51,7 +55,11 @@ function [brain_n,brain_el,brain_f] = brain2mesh(seg,varargin)
 %          cfg.dotruncate: 0 or [1]. by default, the mesh is truncated a few pixel in the 
 %             +z direction below the lowest pixel containing CSF to focus on the brain areas. 
 %             A value of 0 gives a complete head mesh. 
-% 
+%          cfg.imfill: ['imfill'], 'mri_fillholes' etc, the function name
+%             for 3D image hole-filling function, default is imfill,
+%             requires MATLAB image processing toolbox or octave-image
+%             toolbox
+%
 % == Outputs ==
 %      node: node coordinates of the tetrahedral mesh
 %      elem: element list of the tetrahedral mesh / the last column denotes the boundary ID
@@ -61,11 +69,12 @@ function [brain_n,brain_el,brain_f] = brain2mesh(seg,varargin)
 % 0-Air/background, 1-Scalp, 2-Skull, 3-CSF, 4-GM, 5-WM, 6-air pockets
 % 
 % == Reference ==
-% If you use Brain2Mesh in your publication, please cite the below paper:
+% If you use Brain2Mesh in your publication, the authors of this toolbox
+% apprecitate if you can cite our Neurophotonics paper listed above.
 %
-% Anh Phong Tran, Shijie Yan and Qianqian Fang, "Improving model-based
-% fNIRS analysis using mesh-based anatomical and light-transport models,"
-% Neurophotonics, in-press  
+%
+% -- this function is part of brain2mesh toolbox (http://mcx.space/brain2mesh)
+%    License: GPL v2 or later, see LICENSE.txt for details
 %
 
 %% Handling the inputs
@@ -102,24 +111,32 @@ smooth=jsonopt('smooth',0,cfg);
 
 segname=fieldnames(density);
 
+imfillstr=jsonopt('imfill','imfill',cfg);
+imfillparam='holes';
+imfill3d=str2func(imfillstr);
+
 if isstruct(seg)
-    seg2 = seg;
+    tpm = seg;
 elseif(ndim(seg)==4)
     for i=1:size(seg,4)
-        seg2.(segname{i})=seg(:,:,:,i);
+        tpm.(segname{i})=seg(:,:,:,i);
     end
 else
     fprintf('This seg input is currently not supported \n')
 end
 
+% normalizing segmentation inputs to 0-1
+normalizer=@(x) double(x)*( ~isinteger(x) + (isinteger(x))*(1/double(cast(inf,class(x)))) );
+tpm=structfun(normalizer, tpm,'UniformOutput',false);
+
 opt=struct;
 
-for i = 1:size(fieldnames(seg2))
+for i = 1:size(fieldnames(tpm))
     opt(i).maxnode = maxnode; 
     if(isfield(radbound,segname{i}))
         opt(i).radbound= radbound.(segname{i});
     end
-    %opt(i).distbound= distbound.(segname{i});
+    opt(i).distbound= distbound.(segname{i});
 end
 
 cube3=true(3,3,3);
@@ -127,36 +144,36 @@ cube3=true(3,3,3);
 %% Pre-processing steps to create separations between the tissues in the
 % volume space
 
-dim = size(seg2.wm);
-seg2.wm = imfill(seg2.wm,'holes');
-p_wm = seg2.wm;
-p_pial = p_wm+seg2.gm;
+dim = size(tpm.wm);
+tpm.wm = imfill3d(tpm.wm>0,imfillparam);
+p_wm = tpm.wm;
+p_pial = p_wm+tpm.gm;
 p_pial = max(p_pial,imdilate(p_wm,cube3));
-p_pial = imfill(p_pial,'holes');
-p_csf = p_pial+seg2.csf;
+p_pial = imfill3d(p_pial>0,imfillparam);
+p_csf = p_pial+tpm.csf;
 p_csf(p_csf>1) = 1;
 p_csf = max(p_csf,imdilate(p_pial,cube3));
 
-expandedGM = p_pial - seg2.wm - seg2.gm;
-expandedCSF = p_csf - seg2.wm - seg2.gm - seg2.csf - expandedGM;
+expandedGM = p_pial - tpm.wm - tpm.gm;
+expandedCSF = p_csf - tpm.wm - tpm.gm - tpm.csf - expandedGM;
 expandedGM = imdilate(expandedGM,cube3);
 expandedCSF = imdilate(expandedCSF,cube3);
 
-if isfield(seg2,'skull') && isfield(seg2,'scalp')
-    p_bone = p_csf + seg2.skull;
+if isfield(tpm,'skull') && isfield(tpm,'scalp')
+    p_bone = p_csf + tpm.skull;
     p_bone(p_bone>1) = 1;
     p_bone = max(p_bone,imdilate(p_csf,cube3));
-    p_skin = p_bone + seg2.scalp;
+    p_skin = p_bone + tpm.scalp;
     p_skin(p_skin>1) = 1;
     p_skin = max(p_skin,imdilate(p_bone,cube3));
-	expandedSkull = p_bone - seg2.wm - seg2.gm - seg2.csf - seg2.skull - expandedCSF - expandedGM;
+	expandedSkull = p_bone - tpm.wm - tpm.gm - tpm.csf - tpm.skull - expandedCSF - expandedGM;
     expandedSkull = imdilate(expandedSkull,cube3);
-elseif isfield(seg2,'scalp') && ~isfield(seg2,'skull')
-    p_skin = p_csf + seg2.scalp;
+elseif isfield(tpm,'scalp') && ~isfield(tpm,'skull')
+    p_skin = p_csf + tpm.scalp;
     p_skin(p_skin>1) = 1;
     p_skin = max(p_skin,imdilate(p_csf,cube3));
-elseif isfield(seg2,'skull') && ~isfield(seg2,'scalp')
-    p_bone = p_csf + seg2.skull;
+elseif isfield(tpm,'skull') && ~isfield(tpm,'scalp')
+    p_bone = p_csf + tpm.skull;
     p_bone(p_bone>1) = 1;
     p_bone = max(p_bone,imdilate(p_csf,cube3));
 end
@@ -182,7 +199,7 @@ if(smooth>0)
     [csf_n,csf_f]=meshcheckrepair(csf_n,csf_f(:,1:3),'meshfix');
 end
 
-if isfield(seg2,'skull')
+if isfield(tpm,'skull')
     optskull=struct('radbound',radbound.skull,'maxnode',maxnode);
     [bone_n,bone_f] = v2s(p_bone,threshold,optskull,'cgalsurf');
     %[bone_n,bone_f]=meshcheckrepair(bone_n,bone_f(:,1:3),'isolated');
@@ -206,7 +223,7 @@ if isfield(seg2,'skull')
         bone_n = bone_n2; bone_f = bone_f2;
     end
 end
-if isfield(seg2,'scalp')
+if isfield(tpm,'scalp')
     optscalp=struct('radbound',radbound.scalp,'maxnode',maxnode);
     [skin_n,skin_f] = v2s(p_skin,threshold,optscalp,'cgalsurf');
     %[skin_n,skin_f]=meshcheckrepair(skin_n,skin_f(:,1:3),'isolated');
@@ -231,10 +248,10 @@ for loop = 1:2
     end
     [surf_n,surf_f] = surfboolean(wm_n(:,1:3),wm_f(:,1:3),'resolve',pial_n,pial_f);
     [surf_n,surf_f] = surfboolean(surf_n,surf_f,'resolve',csf_n,csf_f);
-    if isfield(seg2,'skull')
+    if isfield(tpm,'skull')
         [surf_n,surf_f] = surfboolean(surf_n,surf_f,'resolve',bone_n,bone_f);
     end
-    if isfield(seg2,'scalp')
+    if isfield(tpm,'scalp')
         [surf_n,surf_f] = surfboolean(surf_n,surf_f,'resolve',skin_n,skin_f);
     end
     final_surf_n=surf_n;
@@ -273,7 +290,7 @@ for loop = 1:2
     [label, label_elem] = unique(final_e(:,5)); 
     label_centroid=meshcentroid(final_n,final_e(label_elem,1:4));
 
-    if isfield(seg2,'scalp')
+    if isfield(tpm,'scalp')
         [no_skin,el_skin] = s2m(skin_n,skin_f,1.0,maxvol,'tetgen1.5',[],[],'-A');
         for i = 1:length(unique(el_skin(:,5)))
             vol_skin(i) = sum(elemvolume(no_skin,el_skin(el_skin(:,5)==i,1:4)));
@@ -374,15 +391,15 @@ for loop = 1:2
 end
 
 %% Relabeling step to remove layered assumptions
-if dorelabel == 1 && (isfield(seg2,'skull') && isfield(seg2,'scalp')) 
+if dorelabel == 1 && (isfield(tpm,'skull') && isfield(tpm,'scalp')) 
     centroid = meshcentroid(brain_n(:,1:3),brain_el(:,1:4));centroid = ceil(centroid);
     tag = zeros(length(brain_el(:,1)),1);
     facenb = faceneighbors(brain_el(:,1:4));
     for i = 1:length(brain_el(:,1))
         if (expandedGM(centroid(i,1),centroid(i,2),centroid(i,3))>0.5) && (brain_el(i,5) == 2)
-            if seg2.scalp(centroid(i,1),centroid(i,2),centroid(i,3)) > 0.5
+            if tpm.scalp(centroid(i,1),centroid(i,2),centroid(i,3)) > 0.5
                 brain_el(i,5) = 5;
-            elseif seg2.skull(centroid(i,1),centroid(i,2),centroid(i,3)) > 0.5
+            elseif tpm.skull(centroid(i,1),centroid(i,2),centroid(i,3)) > 0.5
                 brain_el(i,5) = 4;
             else
                 brain_el(i,5) = 3;
@@ -394,7 +411,7 @@ if dorelabel == 1 && (isfield(seg2,'skull') && isfield(seg2,'scalp'))
                 end
             end
         elseif (expandedCSF(centroid(i,1),centroid(i,2),centroid(i,3))>0.5) && (brain_el(i,5) == 3)
-            if seg2.scalp(centroid(i,1),centroid(i,2),centroid(i,3)) > 0.5
+            if tpm.scalp(centroid(i,1),centroid(i,2),centroid(i,3)) > 0.5
                 brain_el(i,5) = 5;
             else
                 brain_el(i,5) = 4;
