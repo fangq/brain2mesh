@@ -14,18 +14,12 @@ for i = 1:5
     seg.(names{i}) = A.NIFTIData;
 end
 
-%% Alternative loading option using a 4D array.
-% tissue_order = [5 4 3 1 2]; %Reordering tissues with scalp first going inward to WM
-% for i = 1:5
-%    seg(:,:,:,i) = data(:,:,:,tissue_order(i));
-% end
+%% call brain2mesh to create multi-layered brain mesh; dotruncate cuts the mesh below brain
 
-
-%% The one liner brain2mesh is called. The third parameter controls activates the whole head
-%% pathway
-cfg.dotruncate = 1;
+cfg.smooth=10;
+tic
 [node,elem,face] = brain2mesh(seg,cfg);
-
+toc
 
 %% Plotting of the result
 plotmesh(node,elem(elem(:,5)==5,:),'FaceColor',[1 1 1],'EdgeAlpha',0.6) %%wm
