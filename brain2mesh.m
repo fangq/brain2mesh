@@ -150,16 +150,18 @@ p_wm = tpm.wm;
 p_pial = p_wm+tpm.gm;
 p_pial = max(p_pial,imdilate(p_wm,cube3));
 p_pial = imfill3d(p_pial>0,imfillparam);
-p_csf = p_pial+tpm.csf;
-p_csf(p_csf>1) = 1;
-p_csf = max(p_csf,imdilate(p_pial,cube3));
-
 expandedGM = p_pial - tpm.wm - tpm.gm;
-expandedCSF = p_csf - tpm.wm - tpm.gm - tpm.csf - expandedGM;
 expandedGM = imdilate(expandedGM,cube3);
-expandedCSF = imdilate(expandedCSF,cube3);
 
-if isfield(tpm,'skull') && isfield(tpm,'scalp')
+if(isfield(tpm,'csf'))
+    p_csf = p_pial+tpm.csf;
+    p_csf(p_csf>1) = 1;
+    p_csf = max(p_csf,imdilate(p_pial,cube3));
+    expandedCSF = p_csf - tpm.wm - tpm.gm - tpm.csf - expandedGM;
+    expandedCSF = imdilate(expandedCSF,cube3);
+end
+
+if isfield(tpm,'skull') && isfield(tpm,'scalp') && isfield(tpm,'csf')
     p_bone = p_csf + tpm.skull;
     p_bone(p_bone>1) = 1;
     p_bone = max(p_bone,imdilate(p_csf,cube3));
@@ -183,20 +185,24 @@ end
 
 [wm_n,wm_f] = v2s(p_wm,threshold,opt(1),'cgalsurf');
 [pial_n,pial_f] = v2s(p_pial,threshold,opt(2),'cgalsurf');
-[csf_n,csf_f] = v2s(p_csf,threshold,opt(3),'cgalsurf');
-
 [wm_n,wm_f]=meshcheckrepair(wm_n,wm_f(:,1:3),'isolated');
 [pial_n,pial_f]=meshcheckrepair(pial_n,pial_f(:,1:3),'isolated');
-[csf_n,csf_f]=meshcheckrepair(csf_n,csf_f(:,1:3),'isolated');
+
+if(isfield(tpm,'csf'))
+    [csf_n,csf_f] = v2s(p_csf,threshold,opt(3),'cgalsurf');
+    [csf_n,csf_f]=meshcheckrepair(csf_n,csf_f(:,1:3),'isolated');
+end
 
 if(smooth>0)
     wm_n=sms(wm_n,wm_f,smooth,0.5,'lowpass');
     pial_n=sms(pial_n,pial_f,smooth,0.5,'lowpass');
-    csf_n=sms(csf_n,csf_f,smooth,0.5,'lowpass');
-    
     [wm_n,wm_f]=meshcheckrepair(wm_n,wm_f(:,1:3),'meshfix');
     [pial_n,pial_f]=meshcheckrepair(pial_n,pial_f(:,1:3),'meshfix');
-    [csf_n,csf_f]=meshcheckrepair(csf_n,csf_f(:,1:3),'meshfix');
+
+    if(isfield(tpm,'csf'))
+        csf_n=sms(csf_n,csf_f,smooth,0.5,'lowpass');
+        [csf_n,csf_f]=meshcheckrepair(csf_n,csf_f(:,1:3),'meshfix');
+    end
 end
 
 if isfield(tpm,'skull')
@@ -237,17 +243,29 @@ end
 for loop = 1:2
     %% If the first pass fails, a second pass is called using the decoupled function
     % to eliminate intersections between surface meshes
-    if (loop==2) && (exist('label_elem'))
+    if (loop==2) && (exist('label_elem','var'))
         continue;
     end
-    if (loop==2) && (~exist('label_elem'))
-        [bone_n,bone_f] = surfboolean(bone_n(:,1:3),bone_f(:,1:3),'decouple',skin_n(:,1:3),skin_f(:,1:3));
-        [csf_n,csf_f] = surfboolean(csf_n(:,1:3),csf_f(:,1:3),'decouple',bone_n(:,1:3),bone_f(:,1:3));
-        [pial_n,pial_f] = surfboolean(pial_n(:,1:3),pial_f(:,1:3),'decouple',csf_n(:,1:3),csf_f(:,1:3));
-        [wm_n,wm_f] = surfboolean(wm_n(:,1:3),wm_f(:,1:3),'decouple',pial_n(:,1:3),pial_f(:,1:3));
+    if (loop==2) && (~exist('label_elem','var'))
+        if(exist('bone_n','var') && exist('skin_n','var'))
+            [bone_n,bone_f] = surfboolean(bone_n(:,1:3),bone_f(:,1:3),'decouple',skin_n(:,1:3),skin_f(:,1:3));
+        end
+        if(exist('bone_n','var') && exist('csf_n','var'))
+            [csf_n,csf_f] = surfboolean(csf_n(:,1:3),csf_f(:,1:3),'decouple',bone_n(:,1:3),bone_f(:,1:3));
+        end
+        if(exist('pial_n','var') && exist('csf_n','var'))
+            [pial_n,pial_f] = surfboolean(pial_n(:,1:3),pial_f(:,1:3),'decouple',csf_n(:,1:3),csf_f(:,1:3));
+        end
+        if(exist('pial_n','var') && exist('wm_n','var'))
+            [wm_n,wm_f] = surfboolean(wm_n(:,1:3),wm_f(:,1:3),'decouple',pial_n(:,1:3),pial_f(:,1:3));
+        end
     end
-    [surf_n,surf_f] = surfboolean(wm_n(:,1:3),wm_f(:,1:3),'resolve',pial_n,pial_f);
-    [surf_n,surf_f] = surfboolean(surf_n,surf_f,'resolve',csf_n,csf_f);
+    if isfield(tpm,'wm') &&  isfield(tpm,'gm')
+        [surf_n,surf_f] = surfboolean(wm_n(:,1:3),wm_f(:,1:3),'resolve',pial_n,pial_f);
+    end
+    if isfield(tpm,'csf')
+        [surf_n,surf_f] = surfboolean(surf_n,surf_f,'resolve',csf_n,csf_f);
+    end
     if isfield(tpm,'skull')
         [surf_n,surf_f] = surfboolean(surf_n,surf_f,'resolve',bone_n,bone_f);
     end
@@ -259,7 +277,11 @@ for loop = 1:2
     %% If the whole head option is deactivated, the cut is made at the base of the brain using a box cutting
     if (dotruncate==1)
         dim=max(surf_n);
-        dim2 = min(csf_n);
+        if isfield(tpm,'csf')
+            dim2 = min(csf_n);
+        else
+            dim2 = min(surf_n);
+        end
         [nbox,fbox,ebox]=meshabox([-1 -1 dim2(3)+4.1],[dim(1)+1 dim(2)+1 dim(3)+1],500);
         fbox=volface(ebox);
         [nbox,fbox]=removeisolatednode(nbox,fbox);
@@ -334,11 +356,13 @@ for loop = 1:2
     newtag=zeros(length(idx),1);
     newtag=intriangulation(wm_n,wm_f(:,1:3),label_centroid(idx,:))*6;
     newtag=max(newtag,intriangulation(pial_n,pial_f(:,1:3),label_centroid(idx,:))*5);
-    newtag=max(newtag,intriangulation(csf_n,csf_f(:,1:3),label_centroid(idx,:))*4);
-    if(exist('bone_n2'))
+    if(exist('csf_n','var'))
+        newtag=max(newtag,intriangulation(csf_n,csf_f(:,1:3),label_centroid(idx,:))*4);
+    end
+    if(exist('bone_n2','var'))
         newtag=max(newtag,intriangulation(bone_n2,bone_f2(:,1:3),label_centroid(idx,:))*3);
     end
-    if(exist('no_skin'))
+    if(exist('no_skin','var'))
         newtag=max(newtag,intriangulation(no_skin,f_skin(:,1:3),label_centroid(idx,:))*2);
     end
     newlabel(idx)=newtag;
@@ -378,11 +402,13 @@ for loop = 1:2
     newtag=zeros(length(idx),1);
     newtag=intriangulation(wm_n,wm_f(:,1:3),label_centroid2(idx,:))*6;
     newtag=max(newtag,intriangulation(pial_n,pial_f(:,1:3),label_centroid2(idx,:))*5);
-    newtag=max(newtag,intriangulation(csf_n,csf_f(:,1:3),label_centroid2(idx,:))*4);
-    if(exist('bone_n2'))
+    if(exist('csf_n','var'))
+        newtag=max(newtag,intriangulation(csf_n,csf_f(:,1:3),label_centroid2(idx,:))*4);
+    end
+    if(exist('bone_n2','var'))
         newtag=max(newtag,intriangulation(bone_n2,bone_f2(:,1:3),label_centroid2(idx,:))*3);
     end
-    if(exist('no_skin'))
+    if(exist('no_skin','var'))
         newtag=max(newtag,intriangulation(no_skin,f_skin(:,1:3),label_centroid2(idx,:))*2);
     end
     newlabel(idx)=newtag;
