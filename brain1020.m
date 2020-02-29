@@ -89,6 +89,12 @@ end
 
 % at this point, initpoints contains {nz, iz, lpa, rpa, cz0}
 
+if(jsonopt('display',1,opt))
+    figure;
+    plotmesh(node,elem,'linestyle','none','facealpha',0.3,'facecolor','b');
+    camlight; lighting phong
+    hold on;
+end
 %% Step b: nz, iz and cz0 to determine saggital reference curve
 nsagg=slicehead(node, elem, initpoints([1,2,5],:));
 
@@ -123,31 +129,52 @@ landmarks.s0=sagg;           % fpz, fz, cz, pz, oz
 
 [landmarks.nar, naraxis, landmarks.npr, npraxis]=slicebetween(node,elem,landmarks.s0(1,:), landmarks.c0(end,:),landmarks.s0(end,:), perc2*2);
 
-%% Step j: f8, fz and f7 to determine front coronal cut
-
-[landmarks.nalc, nalcoro, landmarks.narc, narcoro]=slicebetween(node,elem,landmarks.nal(1,:), landmarks.s0(2,:), landmarks.nar(1,:),perc2*2);
-
 
 %% debug
 if(jsonopt('display',1,opt))
-    plotmesh(node,elem,'linestyle','none','facealpha',0.3,'facecolor','b');
-    camlight; lighting phong
-    hold on;
-    plotpoly(nsagg,'r-','LineWidth',2);
-    plotpoly(ncoro,'g-','LineWidth',2);
-    plotpoly(nalaxis,'k-','LineWidth',2);
-    plotpoly(nplaxis,'b-','LineWidth',2);
-    plotpoly(naraxis,'k-','LineWidth',2);
-    plotpoly(npraxis,'b-','LineWidth',2);
+    plotmesh(nsagg,'r-','LineWidth',2);
+    plotmesh(ncoro,'g-','LineWidth',2);
+    plotmesh(nalaxis,'k-','LineWidth',2);
+    plotmesh(nplaxis,'b-','LineWidth',2);
+    plotmesh(naraxis,'k-','LineWidth',2);
+    plotmesh(npraxis,'b-','LineWidth',2);
 
-    plotpoly(landmarks.s0,'ro','LineWidth',4);
-    plotpoly(landmarks.c0,'go','LineWidth',4);
-    plotpoly(landmarks.nal,'ko','LineWidth',4);
-    plotpoly(landmarks.nar,'mo','LineWidth',4);
-    plotpoly(landmarks.npl,'ko','LineWidth',4);
-    plotpoly(landmarks.npr,'mo','LineWidth',4);
-
+    plotmesh(landmarks.s0,'ro','LineWidth',4);
+    plotmesh(landmarks.c0,'go','LineWidth',4);
+    plotmesh(landmarks.nal,'ko','LineWidth',4);
+    plotmesh(landmarks.nar,'mo','LineWidth',4);
+    plotmesh(landmarks.npl,'ko','LineWidth',4);
+    plotmesh(landmarks.npr,'mo','LineWidth',4);
 end
+
+%% Step j: f8, fz and f7 to determine front coronal cut
+
+idxcz=closestpt(landmarks.s0,landmarks.cz);
+
+for i=1:size(landmarks.nal,1)-1
+    step=perc2/10*25*(1+(perc2<20 && i==size(landmarks.nal,1)-1));
+    [landmarks.(sprintf('cal_%d',i)), leftpart, landmarks.(sprintf('car_%d',i)), rightpart]=slicebetween(node,elem,landmarks.nal(i,:), landmarks.s0(idxcz-i,:), landmarks.nar(i,:),step);
+    if(jsonopt('display',1,opt))
+        plotmesh(landmarks.(sprintf('cal_%d',i)),'yo','LineWidth',2);
+        plotmesh(landmarks.(sprintf('car_%d',i)),'co','LineWidth',2);
+        
+        plotmesh(leftpart,'k-','LineWidth',2);
+        plotmesh(rightpart,'k-','LineWidth',2);
+    end
+end
+
+for i=1:size(landmarks.npl,1)-1
+    step=perc2/10*25*(1+(perc2<20 && i==size(landmarks.nal,1)-1));
+    [landmarks.(sprintf('cpl_%d',i)), leftpart, landmarks.(sprintf('cpr_%d',i)), rightpart]=slicebetween(node,elem,landmarks.npl(i,:), landmarks.s0(idxcz+i,:), landmarks.npr(i,:),step);
+    if(jsonopt('display',1,opt))
+        plotmesh(landmarks.(sprintf('cpl_%d',i)),'yo','LineWidth',2);
+        plotmesh(landmarks.(sprintf('cpr_%d',i)),'co','LineWidth',2);
+        
+        plotmesh(leftpart,'k-','LineWidth',2);
+        plotmesh(rightpart,'k-','LineWidth',2);
+    end
+end
+
 
 %% helper functions
 %---------------------------------------------------------------------------
@@ -164,10 +191,3 @@ pt=get(gcf,'userdata');
 if(size(pt,1)<5)
      set(gcf,'userdata',[pt;pos]);
 end
-
-%---------------------------------------------------------------------------
-
-function hp=plotpoly(nodes,varargin)
-hp=plotmesh(nodes,varargin{:});
-
-
