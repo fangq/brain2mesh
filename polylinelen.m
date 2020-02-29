@@ -1,4 +1,4 @@
-function [len, node]=polylinelen(node, p0, p1)
+function [len, node]=polylinelen(node, p0, p1, pmid)
 %
 % [len, node]=polylinelen(node, p0, p1)
 %
@@ -12,7 +12,9 @@ function [len, node]=polylinelen(node, p0, p1)
 %    p0:(optional) a given node to define the start of the polyline, if not
 %         defined, start position is assumed to be 1st node
 %    p1:(optional) a given node to define the end of the polyline, if not
-%         defined, start position is assumed to be last node
+%         defined, end position is assumed to be last node
+%    pmid:(optional) a given node sits between p0 and p1, if not
+%         defined, index of the middle (floored) node is used
 %
 % output:
 %    len: the length of each segment between the start and the end points
@@ -30,18 +32,29 @@ if(nargin<3)
     end
 end
 
+if(nargin<4)
+    pmid=floor((p0+p1)*0.5);
+end
+
 if(size(p0,2)==3)
     p0=closestpt(node,p0);
 end
 if(size(p1,2)==3)
     p1=closestpt(node,p1);
 end
-
-if(p0>p1)
-    node=node([p0:end 1:p1],:);
-else
-    node=node(p0:p1,:);
+if(size(pmid,2)==3)
+    pmid=closestpt(node,pmid);
 end
 
-dist= node(1:end-1,:) - node(2:end,:);
-len=sum(sqrt(sum(dist.*dist,2)));
+if(p0<pmid && pmid<p1)
+    node=node(p0:p1,:);
+elseif(p0<pmid && p1<pmid)
+    node=node([min(p0,p1):-1:1 end:-1:max(p0,p1)],:);
+elseif(p0>pmid && pmid>p1)
+    node=node(p0:-1:p1,:);
+elseif(p0>pmid && p1>pmid)
+    node=node([max(p0,p1):end 1:min(p0,p1)],:);
+end
+
+len=node(1:end-1,:) - node(2:end,:);
+len=sqrt(sum(len.*len,2));

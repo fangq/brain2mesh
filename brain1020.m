@@ -52,12 +52,14 @@ if(nargin<5)
     end
 end
 
+opt=varargin2struct(varargin{:});
+
 if(isstruct(initpoints))
     initpoints=orderfields(initpoints,{'nz', 'iz', 'lpa', 'rpa', 'cz'});
     landmarks=initpoints;
     initpoints=struct2array(initpoints);
     initpoints=reshape(initpoints(:),3,length(initpoints(:))/3)';
-else
+elseif(size(initpoints,1)>=5)
     landmarks=struct('nz', initpoints(1,:),'iz', initpoints(2,:),...
                      'lpa',initpoints(3,:),'rpa',initpoints(4,:),...
 		     'cz', initpoints(5,:));
@@ -69,7 +71,8 @@ end
 
 if(isempty(initpoints) && size(initpoints,1)<5)
     hf=figure;
-    plotmesh(node,elem);
+    plotmesh(node,elem,'facecolor','b');
+    camlight; lighting phong
     datacursormode(hf,'on');
     set(datacursormode(hf),'UpdateFcn',@myupdatefcn);
 end
@@ -83,32 +86,68 @@ if(exist('hf','var'))
     close(hf);
 end
 
-initpoints
 
 % at this point, initpoints contains {nz, iz, lpa, rpa, cz0}
 
-%% Step 1: nz, iz and cz0 to determine saggital reference curve
-[nsagg, isagg]=slicehead(node, elem, initpoints([1,2,5],:));
-isagg(isnan(isagg))=[];
+%% Step b: nz, iz and cz0 to determine saggital reference curve
+nsagg=slicehead(node, elem, initpoints([1,2,5],:));
 
-nsagg=nsagg(isagg,:);
-ncoro=ncoro(icoro,:);
+%% Step c1: get cz1 as the mid-point between iz and nz
+[slen, nsagg]=polylinelen(nsagg, initpoints(1,:), initpoints(2,:), initpoints(5,:));
+[idx, weight, cz]=polylineinterp(slen, sum(slen)*0.5, nsagg);
+initpoints(5,:)=cz(1,:);
 
-%% Step 2: get true cz as the mid-point between iz and nz
-[len, nsagg]=polylinelen(nsagg, initpoints(1,:), initpoints(2,:));
-[cz, index, weight]=polylineinterp(nsagg, len/2);
-initpoints(5,:)=cz;
-landmarks.cz=cz;
+%% Step c2: lpa, rpa and cz to determine coronal reference curve, get true cz
+ncoro=slicehead(node, elem, initpoints([3,4,5],:));
+[len, ncoro]=polylinelen(ncoro, initpoints(3,:), initpoints(4,:), initpoints(5,:));
+[idx, weight, coro]=polylineinterp(len, sum(len)*[50 perc1:perc2:(100-perc1)]*0.01, ncoro);
 
-%% Step 3: lpa, rpa and cz to determine coronal reference curve
-[ncoro, icoro]=slicehead(node, elem, initpoints([3,4,5],:));
-icoro(isnan(icoro))=[];
+initpoints(5,:)=coro(1,:);
+landmarks.cz=coro(1,:);      % using UI 10-10 approach
+landmarks.c0=coro(2:end,:);  % t7, c3, cz, c4, t8
+
+initpoints
+
+%% Step d/e: subdivide saggital and coronal ref curves
+
+nsagg=slicehead(node, elem, initpoints([1,2,5],:));
+[slen, nsagg]=polylinelen(nsagg, initpoints(1,:), initpoints(2,:), initpoints(5,:));
+[idx, weight, sagg]=polylineinterp(slen, sum(slen)*[perc1:perc2:(100-perc1)]*0.01, nsagg);
+landmarks.s0=sagg;           % fpz, fz, cz, pz, oz
+
+%% Step f,h,i: fpz, t7 and oz to determine left 10% axial reference curve
+
+[landmarks.nal, nalaxis, landmarks.npl, nplaxis]=slicebetween(node,elem,landmarks.s0(1,:), landmarks.c0(1,:), landmarks.s0(end,:),perc2*2);
+
+%% Step g: fpz, t8 and oz to determine right 10% axial reference curve
+
+[landmarks.nar, naraxis, landmarks.npr, npraxis]=slicebetween(node,elem,landmarks.s0(1,:), landmarks.c0(end,:),landmarks.s0(end,:), perc2*2);
+
+%% Step j: f8, fz and f7 to determine front coronal cut
+
+[landmarks.nalc, nalcoro, landmarks.narc, narcoro]=slicebetween(node,elem,landmarks.nal(1,:), landmarks.s0(2,:), landmarks.nar(1,:),perc2*2);
+
 
 %% debug
-plotmesh(node,elem);
-hold on;
-plot3(nsagg(isagg,1),nsagg(isagg,2),nsagg(isagg,3),'r','LineWidth',4);
-plot3(ncoro(icoro,1),ncoro(icoro,2),ncoro(icoro,3),'g','LineWidth',4);
+if(jsonopt('display',1,opt))
+    plotmesh(node,elem,'linestyle','none','facealpha',0.3,'facecolor','b');
+    camlight; lighting phong
+    hold on;
+    plotpoly(nsagg,'r-','LineWidth',2);
+    plotpoly(ncoro,'g-','LineWidth',2);
+    plotpoly(nalaxis,'k-','LineWidth',2);
+    plotpoly(nplaxis,'b-','LineWidth',2);
+    plotpoly(naraxis,'k-','LineWidth',2);
+    plotpoly(npraxis,'b-','LineWidth',2);
+
+    plotpoly(landmarks.s0,'ro','LineWidth',4);
+    plotpoly(landmarks.c0,'go','LineWidth',4);
+    plotpoly(landmarks.nal,'ko','LineWidth',4);
+    plotpoly(landmarks.nar,'mo','LineWidth',4);
+    plotpoly(landmarks.npl,'ko','LineWidth',4);
+    plotpoly(landmarks.npr,'mo','LineWidth',4);
+
+end
 
 %% helper functions
 %---------------------------------------------------------------------------
@@ -125,5 +164,10 @@ pt=get(gcf,'userdata');
 if(size(pt,1)<5)
      set(gcf,'userdata',[pt;pos]);
 end
+
+%---------------------------------------------------------------------------
+
+function hp=plotpoly(nodes,varargin)
+hp=plotmesh(nodes,varargin{:});
 
 

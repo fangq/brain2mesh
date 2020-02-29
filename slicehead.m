@@ -26,3 +26,7 @@ function [bcutpos, bcutloop]=slicehead(node, face, varargin)
 [bcutpos,bcutvalue,bcutedges]=qmeshcut(face(:,1:3),node,node(:,1),varargin{:});
 [bcutpos,bcutedges]=removedupnodes(bcutpos,bcutedges);
 bcutloop=extractloops(bcutedges);
+if(nargout==1)
+    bcutloop(isnan(bcutloop))=[];
+    bcutpos=bcutpos(bcutloop,:);
+end
