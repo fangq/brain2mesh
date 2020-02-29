@@ -1,4 +1,4 @@
-function [landmarks, initpoints]=brain1020(node, elem, initpoints, perc1, perc2, varargin)
+function [landmarks, initpoints, lines]=brain1020(node, elem, initpoints, perc1, perc2, varargin)
 %
 % landmarks=brain1020(node, elem)
 %   or
@@ -72,7 +72,7 @@ if(isstruct(initpoints))
 elseif(size(initpoints,1)>=5)
     landmarks=struct('nz', initpoints(1,:),'iz', initpoints(2,:),...
                      'lpa',initpoints(3,:),'rpa',initpoints(4,:),...
-		     'cz', initpoints(5,:));
+		             'cz', initpoints(5,:));
 end
 
 if(size(elem,2)>=4)
@@ -114,9 +114,9 @@ nsagg=slicehead(node, elem, initpoints([1,2,5],:));
 initpoints(5,:)=cz(1,:);
 
 %% Step c2: lpa, rpa and cz to determine coronal reference curve, get true cz
-ncoro=slicehead(node, elem, initpoints([3,4,5],:));
-[len, ncoro]=polylinelen(ncoro, initpoints(3,:), initpoints(4,:), initpoints(5,:));
-[idx, weight, coro]=polylineinterp(len, sum(len)*[50 perc1:perc2:(100-perc1)]*0.01, ncoro);
+lines.ncoro=slicehead(node, elem, initpoints([3,4,5],:));
+[len, lines.ncoro]=polylinelen(lines.ncoro, initpoints(3,:), initpoints(4,:), initpoints(5,:));
+[idx, weight, coro]=polylineinterp(len, sum(len)*[50 perc1:perc2:(100-perc1)]*0.01, lines.ncoro);
 
 initpoints(5,:)=coro(1,:);
 landmarks.cz=coro(1,:);      % using UI 10-10 approach
@@ -126,35 +126,35 @@ initpoints
 
 %% Step d/e: subdivide saggital and coronal ref curves
 
-nsagg=slicehead(node, elem, initpoints([1,2,5],:));
-[slen, nsagg]=polylinelen(nsagg, initpoints(1,:), initpoints(2,:), initpoints(5,:));
-[idx, weight, sagg]=polylineinterp(slen, sum(slen)*[perc1:perc2:(100-perc1)]*0.01, nsagg);
+lines.nsagg=slicehead(node, elem, initpoints([1,2,5],:));
+[slen, lines.nsagg]=polylinelen(lines.nsagg, initpoints(1,:), initpoints(2,:), initpoints(5,:));
+[idx, weight, sagg]=polylineinterp(slen, sum(slen)*[perc1:perc2:(100-perc1)]*0.01, lines.nsagg);
 landmarks.s0=sagg;           % fpz, fz, cz, pz, oz
 
 %% Step f,h,i: fpz, t7 and oz to determine left 10% axial reference curve
 
-[landmarks.nal, nalaxis, landmarks.npl, nplaxis]=slicebetween(node,elem,landmarks.s0(1,:), landmarks.c0(1,:), landmarks.s0(end,:),perc2*2);
+[landmarks.nal, lines.nalaxis, landmarks.npl, lines.nplaxis]=slicebetween(node,elem,landmarks.s0(1,:), landmarks.c0(1,:), landmarks.s0(end,:),perc2*2);
 
 %% Step g: fpz, t8 and oz to determine right 10% axial reference curve
 
-[landmarks.nar, naraxis, landmarks.npr, npraxis]=slicebetween(node,elem,landmarks.s0(1,:), landmarks.c0(end,:),landmarks.s0(end,:), perc2*2);
+[landmarks.nar, lines.naraxis, landmarks.npr, lines.npraxis]=slicebetween(node,elem,landmarks.s0(1,:), landmarks.c0(end,:),landmarks.s0(end,:), perc2*2);
 
 
 %% debug
 if(jsonopt('display',1,opt))
-    plotmesh(nsagg,'r-','LineWidth',2);
-    plotmesh(ncoro,'g-','LineWidth',2);
-    plotmesh(nalaxis,'k-','LineWidth',2);
-    plotmesh(nplaxis,'b-','LineWidth',2);
-    plotmesh(naraxis,'k-','LineWidth',2);
-    plotmesh(npraxis,'b-','LineWidth',2);
+    plotmesh(lines.nsagg,'r-','LineWidth',1);
+    plotmesh(lines.ncoro,'g-','LineWidth',1);
+    plotmesh(lines.nalaxis,'k-','LineWidth',1);
+    plotmesh(lines.nplaxis,'b-','LineWidth',1);
+    plotmesh(lines.naraxis,'k-','LineWidth',1);
+    plotmesh(lines.npraxis,'b-','LineWidth',1);
 
-    plotmesh(landmarks.s0,'ro','LineWidth',4);
-    plotmesh(landmarks.c0,'go','LineWidth',4);
-    plotmesh(landmarks.nal,'ko','LineWidth',4);
-    plotmesh(landmarks.nar,'mo','LineWidth',4);
-    plotmesh(landmarks.npl,'ko','LineWidth',4);
-    plotmesh(landmarks.npr,'mo','LineWidth',4);
+    plotmesh(landmarks.s0,'ro','MarkerSize',2);
+    plotmesh(landmarks.c0,'go','MarkerSize',2);
+    plotmesh(landmarks.nal,'ko','MarkerSize',2);
+    plotmesh(landmarks.nar,'mo','MarkerSize',2);
+    plotmesh(landmarks.npl,'ko','MarkerSize',2);
+    plotmesh(landmarks.npr,'mo','MarkerSize',2);
 end
 
 %% Step j: f8, fz and f7 to determine front coronal cut
@@ -165,11 +165,11 @@ for i=1:size(landmarks.nal,1)-1
     step=perc2/10*25*(1+(perc2<20 && i==size(landmarks.nal,1)-1));
     [landmarks.(sprintf('cal_%d',i)), leftpart, landmarks.(sprintf('car_%d',i)), rightpart]=slicebetween(node,elem,landmarks.nal(i,:), landmarks.s0(idxcz-i,:), landmarks.nar(i,:),step);
     if(jsonopt('display',1,opt))
-        plotmesh(landmarks.(sprintf('cal_%d',i)),'yo','LineWidth',2);
-        plotmesh(landmarks.(sprintf('car_%d',i)),'co','LineWidth',2);
-        
         plotmesh(leftpart,'k-','LineWidth',2);
         plotmesh(rightpart,'k-','LineWidth',2);
+
+        plotmesh(landmarks.(sprintf('cal_%d',i)),'yo','MarkerSize',2);
+        plotmesh(landmarks.(sprintf('car_%d',i)),'co','MarkerSize',2);
     end
 end
 
@@ -177,19 +177,18 @@ for i=1:size(landmarks.npl,1)-1
     step=perc2/10*25*(1+(perc2<20 && i==size(landmarks.nal,1)-1));
     [landmarks.(sprintf('cpl_%d',i)), leftpart, landmarks.(sprintf('cpr_%d',i)), rightpart]=slicebetween(node,elem,landmarks.npl(i,:), landmarks.s0(idxcz+i,:), landmarks.npr(i,:),step);
     if(jsonopt('display',1,opt))
-        plotmesh(landmarks.(sprintf('cpl_%d',i)),'yo','LineWidth',2);
-        plotmesh(landmarks.(sprintf('cpr_%d',i)),'co','LineWidth',2);
-        
-        plotmesh(leftpart,'k-','LineWidth',2);
-        plotmesh(rightpart,'k-','LineWidth',2);
+        plotmesh(leftpart,'k-','LineWidth',1);
+        plotmesh(rightpart,'k-','LineWidth',1);
+
+        plotmesh(landmarks.(sprintf('cpl_%d',i)),'yo','MarkerSize',2);
+        plotmesh(landmarks.(sprintf('cpr_%d',i)),'co','MarkerSize',2);
     end
 end
 
 
 %% helper functions
-%---------------------------------------------------------------------------
 % the respond function when there is a data-tip to popup
-%---------------------------------------------------------------------------
+
 function txt=myupdatefcn(empt,event_obj)
 pos = get(event_obj,'Position');
 %idx=  get(event_obj,'DataIndex');
