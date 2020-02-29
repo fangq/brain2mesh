@@ -6,7 +6,7 @@ function [brain_n,brain_el,brain_f] = brain2mesh(seg,varargin)
 % Other contributors: see AUTHORS.txt for details
 % Version: 0.8
 % URL: http://mcx.space/brain2mesh
-% License: GPL version 2
+% License: GPL version 3
 % Reference: 
 %  Anh Phong Tran, Shijie Yan and Qianqian Fang, "Improving model-based
 %  fNIRS analysis using mesh-based anatomical and light-transport models,"
@@ -74,7 +74,7 @@ function [brain_n,brain_el,brain_f] = brain2mesh(seg,varargin)
 %
 %
 % -- this function is part of brain2mesh toolbox (http://mcx.space/brain2mesh)
-%    License: GPL v2 or later, see LICENSE.txt for details
+%    License: GPL v3 or later, see LICENSE.txt for details
 %
 
 %% Handling the inputs

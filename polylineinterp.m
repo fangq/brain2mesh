@@ -31,7 +31,7 @@ function [idx, weight, newnodes]=polylineinterp(polylen, len, nodes)
 %    [idx, weight]=polylineinterp(lineseg, [3, 12, 7])
 %
 % -- this function is part of brain2mesh toolbox (http://mcx.space/brain2mesh)
-%    License: GPL v2 or later, see LICENSE.txt for details
+%    License: GPL v3 or later, see LICENSE.txt for details
 %
 
 cumlen=[0 cumsum(polylen(:)')];

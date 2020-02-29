@@ -22,7 +22,7 @@ function [len, node]=polylinelen(node, p0, p1, pmid)
 %
 %
 % -- this function is part of brain2mesh toolbox (http://mcx.space/brain2mesh)
-%    License: GPL v2 or later, see LICENSE.txt for details
+%    License: GPL v3 or later, see LICENSE.txt for details
 %
 
 if(nargin<3)

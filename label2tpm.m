@@ -21,7 +21,7 @@ function seg=label2tpm(vol, names)
 %         labels will be named as 'label_#'. 
 %
 % -- this function is part of brain2mesh toolbox (http://mcx.space/brain2mesh)
-%    License: GPL v2 or later, see LICENSE.txt for details
+%    License: GPL v3 or later, see LICENSE.txt for details
 %
 
 if(~isnumeric(vol))

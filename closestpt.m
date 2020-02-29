@@ -17,7 +17,7 @@ function [idx, dist]=closestpt(node,p)
 %
 %
 % -- this function is part of brain2mesh toolbox (http://mcx.space/brain2mesh)
-%    License: GPL v2 or later, see LICENSE.txt for details
+%    License: GPL v3 or later, see LICENSE.txt for details
 %
 
 dd=node-repmat(p,size(node,1),1);

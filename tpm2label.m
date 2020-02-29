@@ -25,7 +25,7 @@ function [vol, names]=tpm2label(seg, segorder)
 %         struct), the first string is the name for label 1, and so on
 %
 % -- this function is part of brain2mesh toolbox (http://mcx.space/brain2mesh)
-%    License: GPL v2 or later, see LICENSE.txt for details
+%    License: GPL v3 or later, see LICENSE.txt for details
 %
 
 mask=seg;

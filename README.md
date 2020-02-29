@@ -7,7 +7,7 @@
   * Department of Bioengineering
   * Northeastern University
   * 360 Huntington Ave, Boston, MA 02115
-* License: GPL v2 or later, see LICENSE.txt
+* License: GPL v3 or later, see LICENSE.txt
 * URL: http://mcx.space/brain2mesh
 
 ## Introduction 

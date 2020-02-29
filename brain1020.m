@@ -3,7 +3,7 @@ function [landmarks, initpoints]=brain1020(node, elem, initpoints, perc1, perc2,
 % landmarks=brain1020(node, elem)
 %   or
 % landmarks=brain1020(node, elem, initpoints)
-% landmarks=brain1020(node, elem, initpoints, 10, 5)
+% landmarks=brain1020(node, elem, initpoints, 10, 10)
 %
 % compute 10-20-like scalp landmarks with user-specified density on a head mesh
 %
@@ -30,8 +30,18 @@ function [landmarks, initpoints]=brain1020(node, elem, initpoints, perc1, perc2,
 %    landmarks: a 3-column array defining the head surface landmark
 %          positions at the requested spacing.
 %
+% 
+% == Reference ==
+% If you use this function in your publication, the authors of this toolbox
+% apprecitate if you can cite the below paper
+%
+%  Anh Phong Tran, Shijie Yan and Qianqian Fang, "Improving model-based
+%  fNIRS analysis using mesh-based anatomical and light-transport models,"
+%  Neurophotonics, 7(1), 015008, URL: http://dx.doi.org/10.1117/1.NPh.7.1.015008
+%
+%
 % -- this function is part of brain2mesh toolbox (http://mcx.space/brain2mesh)
-%    License: GPL v2 or later, see LICENSE.txt for details
+%    License: GPL v3 or later, see LICENSE.txt for details
 %
 
 if(nargin<2)
