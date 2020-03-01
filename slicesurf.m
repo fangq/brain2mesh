@@ -1,6 +1,6 @@
-function [bcutpos, bcutloop]=slicehead(node, face, varargin)
+function [bcutpos, bcutloop]=slicesurf(node, face, varargin)
 %
-% [bcutpos, bcutloop]=slicehead(node, face, varargin)
+% [bcutpos, bcutloop]=slicesurf(node, face, varargin)
 %
 % Slice a closed surface by a plane and extract the intersection curve as a
 % polyline loop

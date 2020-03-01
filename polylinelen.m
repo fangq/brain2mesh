@@ -37,13 +37,13 @@ if(nargin<4)
 end
 
 if(size(p0,2)==3)
-    p0=closestpt(node,p0);
+    p0=closestnode(node,p0);
 end
 if(size(p1,2)==3)
-    p1=closestpt(node,p1);
+    p1=closestnode(node,p1);
 end
 if(size(pmid,2)==3)
-    pmid=closestpt(node,pmid);
+    pmid=closestnode(node,pmid);
 end
 
 if(p0<pmid && pmid<p1)

@@ -106,7 +106,7 @@ if(jsonopt('display',1,opt))
     hold on;
 end
 %% Step b: nz, iz and cz0 to determine saggital reference curve
-nsagg=slicehead(node, elem, initpoints([1,2,5],:));
+nsagg=slicesurf(node, elem, initpoints([1,2,5],:));
 
 %% Step c1: get cz1 as the mid-point between iz and nz
 [slen, nsagg]=polylinelen(nsagg, initpoints(1,:), initpoints(2,:), initpoints(5,:));
@@ -114,7 +114,7 @@ nsagg=slicehead(node, elem, initpoints([1,2,5],:));
 initpoints(5,:)=cz(1,:);
 
 %% Step c2: lpa, rpa and cz to determine coronal reference curve, get true cz
-lines.ncoro=slicehead(node, elem, initpoints([3,4,5],:));
+lines.ncoro=slicesurf(node, elem, initpoints([3,4,5],:));
 [len, lines.ncoro]=polylinelen(lines.ncoro, initpoints(3,:), initpoints(4,:), initpoints(5,:));
 [idx, weight, coro]=polylineinterp(len, sum(len)*[50 perc1:perc2:(100-perc1)]*0.01, lines.ncoro);
 
@@ -126,18 +126,18 @@ initpoints
 
 %% Step d/e: subdivide saggital and coronal ref curves
 
-lines.nsagg=slicehead(node, elem, initpoints([1,2,5],:));
+lines.nsagg=slicesurf(node, elem, initpoints([1,2,5],:));
 [slen, lines.nsagg]=polylinelen(lines.nsagg, initpoints(1,:), initpoints(2,:), initpoints(5,:));
 [idx, weight, sagg]=polylineinterp(slen, sum(slen)*[perc1:perc2:(100-perc1)]*0.01, lines.nsagg);
 landmarks.s0=sagg;           % fpz, fz, cz, pz, oz
 
 %% Step f,h,i: fpz, t7 and oz to determine left 10% axial reference curve
 
-[landmarks.nal, lines.nalaxis, landmarks.npl, lines.nplaxis]=slicebetween(node,elem,landmarks.s0(1,:), landmarks.c0(1,:), landmarks.s0(end,:),perc2*2);
+[landmarks.nal, lines.nalaxis, landmarks.npl, lines.nplaxis]=slicesurf3(node,elem,landmarks.s0(1,:), landmarks.c0(1,:), landmarks.s0(end,:),perc2*2);
 
 %% Step g: fpz, t8 and oz to determine right 10% axial reference curve
 
-[landmarks.nar, lines.naraxis, landmarks.npr, lines.npraxis]=slicebetween(node,elem,landmarks.s0(1,:), landmarks.c0(end,:),landmarks.s0(end,:), perc2*2);
+[landmarks.nar, lines.naraxis, landmarks.npr, lines.npraxis]=slicesurf3(node,elem,landmarks.s0(1,:), landmarks.c0(end,:),landmarks.s0(end,:), perc2*2);
 
 
 %% debug
@@ -159,11 +159,11 @@ end
 
 %% Step j: f8, fz and f7 to determine front coronal cut
 
-idxcz=closestpt(landmarks.s0,landmarks.cz);
+idxcz=closestnode(landmarks.s0,landmarks.cz);
 
 for i=1:size(landmarks.nal,1)-1
     step=perc2/10*25*(1+(perc2<20 && i==size(landmarks.nal,1)-1));
-    [landmarks.(sprintf('cal_%d',i)), leftpart, landmarks.(sprintf('car_%d',i)), rightpart]=slicebetween(node,elem,landmarks.nal(i,:), landmarks.s0(idxcz-i,:), landmarks.nar(i,:),step);
+    [landmarks.(sprintf('cal_%d',i)), leftpart, landmarks.(sprintf('car_%d',i)), rightpart]=slicesurf3(node,elem,landmarks.nal(i,:), landmarks.s0(idxcz-i,:), landmarks.nar(i,:),step);
     if(jsonopt('display',1,opt))
         plotmesh(leftpart,'k-','LineWidth',2);
         plotmesh(rightpart,'k-','LineWidth',2);
@@ -175,7 +175,7 @@ end
 
 for i=1:size(landmarks.npl,1)-1
     step=perc2/10*25*(1+(perc2<20 && i==size(landmarks.nal,1)-1));
-    [landmarks.(sprintf('cpl_%d',i)), leftpart, landmarks.(sprintf('cpr_%d',i)), rightpart]=slicebetween(node,elem,landmarks.npl(i,:), landmarks.s0(idxcz+i,:), landmarks.npr(i,:),step);
+    [landmarks.(sprintf('cpl_%d',i)), leftpart, landmarks.(sprintf('cpr_%d',i)), rightpart]=slicesurf3(node,elem,landmarks.npl(i,:), landmarks.s0(idxcz+i,:), landmarks.npr(i,:),step);
     if(jsonopt('display',1,opt))
         plotmesh(leftpart,'k-','LineWidth',1);
         plotmesh(rightpart,'k-','LineWidth',1);

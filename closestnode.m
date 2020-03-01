@@ -1,6 +1,6 @@
-function [idx, dist]=closestpt(node,p)
+function [idx, dist]=closestnode(node,p)
 %
-% [idx, dist]=closestpt(node,p)
+% [idx, dist]=closestnode(node,p)
 %
 % Find the closest point in a node list and return its index
 
