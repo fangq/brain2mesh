@@ -49,13 +49,17 @@ if(nargin>=3 && nargout>=3)
 end
 
 for i=1:length(len)
-    pos=hist(len(i), cumlen);
+    pos=histc(len(i), cumlen);
     if(any(pos==1))
         idx(i)=find(pos);
-        if(idx(i)<=length(polylen))
+        if(idx(i)==length(cumlen))
+            idx(i)=idx(i)-1;
+            weight(i)=1;
+            newnodes(i,:)=nodes(end,:);
+        elseif(idx(i)<=length(polylen))
             weight(i)=(len(i)-cumlen(idx(i)))/polylen(idx(i));
             if(nargin>=3 && nargout>=3)
-                newnodes(i,:)=weight(i)*nodes(idx(i),:)+(1-weight(i))*nodes(idx(i)+1,:);
+                newnodes(i,:)=(1-weight(i))*nodes(idx(i),:)+weight(i)*nodes(idx(i)+1,:);
             end
         end
     end

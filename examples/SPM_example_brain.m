@@ -20,11 +20,25 @@ tic
 [node,elem,face] = brain2mesh(seg, cfg);
 toc
 
+%% call brain1020 to create the 10-5 landmarks on the scalp
+initpoints=[
+   87.4123  188.5120   93.7087
+   87.4360    5.9213  116.0523
+   21.1737   93.9561   84.9446
+  159.6440   89.8472   86.3139
+   91.2203  104.7490  213.7747];
+
+headsurf=volface(elem(:,1:4));
+tic;
+[landmarks, curves]=brain1020(node, headsurf, initpoints, 10,5,'cztol',1e-8);
+toc
+view([-0.6 1.5 0.6]);
+
 %% Plotting of the result
-plotmesh(node,elem(elem(:,5)==5,:),'FaceColor',[1 1 1],'EdgeAlpha',0.6) %%wm
+plotmesh(node,elem(elem(:,5)==5,:),'FaceColor',[1 1 1]) %%wm
 hold on;
-plotmesh(node,elem(elem(:,5)==4,:),'x>78| y<110','FaceColor',[0.35 0.35 0.35],'EdgeAlpha',0.6) %%pial
-plotmesh(node,elem(elem(:,5)==3,:),'x>78 | z<135','FaceColor',[0.2 0.6 1],'EdgeAlpha',0.6) %%csf
-plotmesh(node,elem(elem(:,5)==2,:),'x>90 | z<130','FaceColor',[1 1 0.9],'EdgeAlpha',0.6) %%bone
-plotmesh(node,elem(elem(:,5)==1,:),'x>100 | z<125','FaceColor',[1 0.8 0.7],'EdgeAlpha',0.6) %%scalp
+plotmesh(node,elem(elem(:,5)==4,:),'x>78| y<110','FaceColor',[0.35 0.35 0.35]) %%pial
+plotmesh(node,elem(elem(:,5)==3,:),'x>78 | z<135','FaceColor',[0.2 0.6 1]) %%csf
+plotmesh(node,elem(elem(:,5)==2,:),'x>90 | z<130','FaceColor',[1 1 0.9]) %%bone
+plotmesh(node,elem(elem(:,5)==1,:),'x>100 | z<125','FaceColor',[1 0.8 0.7]) %%scalp
 view([-0.6 1.5 0.6])
