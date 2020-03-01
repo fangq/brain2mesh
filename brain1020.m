@@ -2,10 +2,10 @@ function [landmarks, curves, initpoints]=brain1020(node, face, initpoints, perc1
 %
 % landmarks=brain1020(node, face)
 %   or
-% landmarks=brain1020(node, face, [], 10, 10)
+% landmarks=brain1020(node, face, [], perc1, perc2)
 % landmarks=brain1020(node, face, initpoints)
-% landmarks=brain1020(node, face, initpoints, 10, 5)
-% [landmarks, curves, initpoints]=brain1020(node, face, initpoints, 10, 10, options)
+% landmarks=brain1020(node, face, initpoints, perc1, perc2)
+% [landmarks, curves, initpoints]=brain1020(node, face, initpoints, perc1, perc2, options)
 %
 % compute 10-20-like scalp landmarks with user-specified density on a head mesh
 %
@@ -73,6 +73,10 @@ function [landmarks, curves, initpoints]=brain1020(node, face, initpoints, perc1
 %             orders of 'nz','iz','lpa','rpa','cz'
 %
 % 
+% == Example ==
+% See brain2mesh/examples/SPM_example_brain.m for an example
+% https://github.com/fangq/brain2mesh/blob/master/examples/SPM_example_brain.m
+%
 % == Dependency ==
 % This function requires a pre-installed Iso2Mesh Toolbox
 %  Download URL: http://github.com/fangq/iso2mesh
