@@ -143,10 +143,17 @@ end
 [node,face]=removeisolatednode(node,face);
 
 % if initpoints is not sufficient, ask user to interactively select nz, iz, lpa, rpa and cz first
-if(isempty(initpoints) && size(initpoints,1)<5)
+if(isempty(initpoints) || size(initpoints,1)<5)
     hf=figure;
     plotmesh(node,face);
-    title('Rotate the mesh, select data cursor, click on P1: Nasion');
+    set(hf,'userdata',initpoints);
+    if(~isempty(initpoints))
+        hold on;
+        plotmesh(initpoints,'gs', 'LineWidth',4);
+    end
+    idx=size(initpoints,1)+1;
+    landmarkname={'Nasion','Inion','Left-ear-lobe','Right-ear-lobe','Vertex/Cz','Done'};
+    title(sprintf('Rotate the mesh, select data cursor, click on P%d: %s',idx, landmarkname{idx}));
     %datacursormode(hf,'on');
     rotate3d('on');
     set(datacursormode(hf),'UpdateFcn',@myupdatefcn);
@@ -317,19 +324,27 @@ end
 function txt=myupdatefcn(empt,event_obj)
 pt=get(gcf,'userdata');
 pos = get(event_obj,'Position');
-if(~isempty(pt) && ismember(pos,pt,'rows'))
-    return;
-end
 %idx=  get(event_obj,'DataIndex');
 txt = {['x: ',num2str(pos(1))],...
        ['y: ',num2str(pos(2))],['z: ',num2str(pos(3))]};
+if(~isempty(pt) && ismember(pos,pt,'rows'))
+    return;
+end
 targetup=get(get(event_obj,'Target'),'parent');
 idx=size(pt,1)+2;
 landmarkname={'Nasion','Inion','Left-ear-lobe','Right-ear-lobe','Vertex/Cz','Done'};
 title(sprintf('Rotate the mesh, select data cursor, click on P%d: %s',idx, landmarkname{idx}));
-disp(['Adding landmark ' landmarkname{idx-1} ':' txt]);
 set(targetup,'userdata',struct('pos',pos));
-if(size(pt,1)<5)
-     set(gcf,'userdata',[pt;pos]);
+pt=[pt;pos];
+if(size(pt,1)<6)
+     set(gcf,'userdata',pt);
 end
+hpt=findobj(gcf,'type','line');
+if(~isempty(hpt))
+    set(hpt,'xdata',pt(:,1),'ydata',pt(:,2),'zdata',pt(:,3));
+else
+    hold on;
+    plotmesh([pt;pos],'gs', 'LineWidth',4);
+end
+disp(['Adding landmark ' landmarkname{idx-1} ':' txt]);
 %rotate3d('on');
