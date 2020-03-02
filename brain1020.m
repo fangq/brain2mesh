@@ -154,7 +154,6 @@ if(isempty(initpoints) || size(initpoints,1)<5)
     idx=size(initpoints,1)+1;
     landmarkname={'Nasion','Inion','Left-ear-lobe','Right-ear-lobe','Vertex/Cz','Done'};
     title(sprintf('Rotate the mesh, select data cursor, click on P%d: %s',idx, landmarkname{idx}));
-    %datacursormode(hf,'on');
     rotate3d('on');
     set(datacursormode(hf),'UpdateFcn',@myupdatefcn);
 end
@@ -347,4 +346,5 @@ else
     plotmesh([pt;pos],'gs', 'LineWidth',4);
 end
 disp(['Adding landmark ' landmarkname{idx-1} ':' txt]);
-%rotate3d('on');
+datacursormode(gcf,'off');
+rotate3d('on');
