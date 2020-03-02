@@ -113,31 +113,36 @@ if(nargin<5)
     end
 end
 
+% parse user options
 opt=varargin2struct(varargin{:});
 
 showplot=jsonopt('display',1,opt);
 baseplane=jsonopt('baseplane',1,opt);
 tol=jsonopt('cztol',1e-6,opt);
 
+% convert initpoints input to a 5x3 array
 if(isstruct(initpoints))
-    initpoints=struct('nz', initpoints.nz,'iz', initpoints.iz,...
-                     'lpa',initpoints.lpa,'rpa',initpoints.rpa,...
-		             'cz', initpoints.cz);
+    initpoints=struct('nz', initpoints.nz(:).','iz', initpoints.iz(:).',...
+                     'lpa',initpoints.lpa(:).','rpa',initpoints.rpa(:).',...
+		             'cz', initpoints.cz(:).');
     landmarks=initpoints;
     if(exist('struct2array','file'))
         initpoints=struct2array(initpoints);
+        initpoints=reshape(initpoints(:),3,length(initpoints(:))/3)';
     else
-        initpoints=[initpoints.nz; initpoints.iz;initpoints.lpa;initpoints.rpa;initpoints.cz];
+        initpoints=[initpoints.nz(:).'; initpoints.iz(:).';initpoints.lpa(:).';initpoints.rpa(:).';initpoints.cz(:).'];
     end
-    initpoints=reshape(initpoints(:),3,length(initpoints(:))/3)';
 end
 
+% convert tetrahedral mesh into a surface mesh
 if(size(face,2)>=4)
     face=volface(face(:,1:4));
 end
 
+% remove nodes not located in the surface
 [node,face]=removeisolatednode(node,face);
 
+% if initpoints is not sufficient, ask user to interactively select nz, iz, lpa, rpa and cz first
 if(isempty(initpoints) && size(initpoints,1)<5)
     hf=figure;
     plotmesh(node,face);
@@ -147,6 +152,7 @@ if(isempty(initpoints) && size(initpoints,1)<5)
     set(datacursormode(hf),'UpdateFcn',@myupdatefcn);
 end
 
+% wait until all 5 points are defined
 if(exist('hf','var'))
     try
         while(size(get(hf,'userdata'),1)<5)
@@ -164,14 +170,15 @@ if(showplot)
     disp(initpoints);
 end
 
+% save input initpoints to landmarks output, cz is not finalized
 if(size(initpoints,1)>=5)
     landmarks=struct('nz', initpoints(1,:),'iz', initpoints(2,:),...
                      'lpa',initpoints(3,:),'rpa',initpoints(4,:),...
-		             'cz', initpoints(5,:));
+		     'cz', initpoints(5,:));
 end
 
 % at this point, initpoints contains {nz, iz, lpa, rpa, cz0}
-
+% plot the head mesh
 if(showplot)
     figure;
     hp=plotmesh(node,face,'facealpha',0.6,'facecolor',[1 0.8 0.7]);
@@ -192,12 +199,12 @@ while(norm(initpoints(5,:)-lastcz)>tol && cziter<10)
     
     nsagg=slicesurf(node, face, initpoints([1,2,5],:));
 
-    %% Step c1: get cz1 as the mid-point between iz and nz
+    %% Step 1.1: get cz1 as the mid-point between iz and nz
     [slen, nsagg]=polylinelen(nsagg, initpoints(1,:), initpoints(2,:), initpoints(5,:));
     [idx, weight, cz]=polylineinterp(slen, sum(slen)*0.5, nsagg);
     initpoints(5,:)=cz(1,:);
 
-    %% Step c2: lpa, rpa and cz to determine coronal reference curve, get true cz
+    %% Step 1.2: lpa, rpa and cz1 to determine coronal reference curve, update cz1
     curves.cm=slicesurf(node, face, initpoints([3,4,5],:));
     [len, curves.cm]=polylinelen(curves.cm, initpoints(3,:), initpoints(4,:), initpoints(5,:));
     [idx, weight, coro]=polylineinterp(len, sum(len)*0.5, curves.cm);
@@ -209,31 +216,32 @@ while(norm(initpoints(5,:)-lastcz)>tol && cziter<10)
     end
 end
 
+% set the finalized cz to output
+landmarks.cz=initpoints(5,:);
 [idx, weight, coro]=polylineinterp(len, sum(len)*(perc1:perc2:(100-perc1))*0.01, curves.cm);
-landmarks.cz=initpoints(5,:);      
 landmarks.cm=coro;                 % t7, c3, cz, c4, t8
 
 if(showplot)
     disp(initpoints);
 end
 
-%% Step d/e: subdivide saggital and coronal ref curves
+%% Step 2: subdivide saggital (sm) and coronal (cm) ref curves
 
 curves.sm=slicesurf(node, face, initpoints([1,2,5],:));
 [slen, curves.sm]=polylinelen(curves.sm, initpoints(1,:), initpoints(2,:), initpoints(5,:));
 [idx, weight, sagg]=polylineinterp(slen, sum(slen)*(perc1:perc2:(100-perc1))*0.01, curves.sm);
 landmarks.sm=sagg;           % fpz, fz, cz, pz, oz
 
-%% Step f,h,i: fpz, t7 and oz to determine left 10% axial reference curve
+%% Step 3: fpz, t7 and oz to determine left 10% axial reference curve
 
 [landmarks.aal, curves.aal, landmarks.apl, curves.apl]=slicesurf3(node,face,landmarks.sm(1,:), landmarks.cm(1,:), landmarks.sm(end,:),perc2*2);
 
-%% Step g: fpz, t8 and oz to determine right 10% axial reference curve
+%% Step 4: fpz, t8 and oz to determine right 10% axial reference curve
 
 [landmarks.aar, curves.aar, landmarks.apr, curves.apr]=slicesurf3(node,face,landmarks.sm(1,:), landmarks.cm(end,:),landmarks.sm(end,:), perc2*2);
 
 
-%% debug
+%% show plots of the landmarks
 if(showplot)
     plotmesh(curves.sm,'r-','LineWidth',1);
     plotmesh(curves.cm,'g-','LineWidth',1);
@@ -250,11 +258,11 @@ if(showplot)
     plotmesh(landmarks.apr,'mo','LineWidth',2);
 end
 
-%% Step j: f8, fz and f7 to determine front coronal cut
+%% Step 5: computing all anterior coronal cuts, moving away from the medial cut (cm) toward frontal
 
 idxcz=closestnode(landmarks.sm,landmarks.cz);
 
-skipcount=floor(10/perc2);
+skipcount=max(floor(10/perc2),1);
 
 for i=1:size(landmarks.aal,1)-skipcount
     step=(perc2*25)*0.1*(1+((perc2<20 + perc2<10) && i==size(landmarks.aal,1)-skipcount));
@@ -268,6 +276,8 @@ for i=1:size(landmarks.aal,1)-skipcount
     end
 end
 
+%% Step 6: computing all posterior coronal cuts, moving away from the medial cut (cm) toward occipital
+
 for i=1:size(landmarks.apl,1)-skipcount
     step=(perc2*25)*0.1*(1+((perc2<20 + perc2<10) && i==size(landmarks.apl,1)-skipcount));
     [landmarks.(sprintf('cpl_%d',i)), leftpart, landmarks.(sprintf('cpr_%d',i)), rightpart]=slicesurf3(node,face,landmarks.apl(i,:), landmarks.sm(idxcz+i,:), landmarks.apr(i,:),step);
@@ -280,7 +290,7 @@ for i=1:size(landmarks.apl,1)-skipcount
     end
 end
 
-%% Step f,h,i: fpz, t7 and oz to determine left 10% axial reference curve
+%% Step 7: create the axial cuts across priciple ref. points: left: nz, lpa, iz, right: nz, rpa, iz
 
 if(baseplane && perc2<=10)
     [landmarks.paal, curves.paal, landmarks.papl, curves.papl]=slicesurf3(node,face,landmarks.nz, landmarks.lpa, landmarks.iz, perc2*2);
@@ -298,8 +308,11 @@ if(baseplane && perc2<=10)
     end
 end
 
-%% helper functions
-% the respond function when there is a data-tip to popup
+%%-------------------------------------------------------------------------------------
+% helper functions
+%--------------------------------------------------------------------------------------
+
+% the respond function when a data-cursor tip to popup
 
 function txt=myupdatefcn(empt,event_obj)
 pt=get(gcf,'userdata');
