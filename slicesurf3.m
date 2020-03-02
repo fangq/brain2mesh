@@ -1,6 +1,6 @@
-function [leftpt,leftcurve,rightpt,rightcurve]=slicesurf3(node,elem,p1,p2,p3,step)
+function [leftpt,leftcurve,rightpt,rightcurve]=slicesurf3(node,elem,p1,p2,p3,step,minangle)
 %
-% [leftpt,leftcurve,rightpt,rightcurve]=slicesurf3(node,elem,p1,p2,p3,step)
+% [leftpt,leftcurve,rightpt,rightcurve]=slicesurf3(node,elem,p1,p2,p3,step,minangle)
 %
 % Slice a closed surface by a plane and extract the landmark nodes along
 % the intersection between p1 and p3, then output into 2 segments: between
@@ -19,6 +19,8 @@ function [leftpt,leftcurve,rightpt,rightcurve]=slicesurf3(node,elem,p1,p2,p3,ste
 %        curve are spaced as 20% of the total lengths of the left-half, and
 %        those on the right-curve are spaced at 20% of the right-half,
 %        starting from p2.
+%    minangle: (optional) a positive minangle will ask this function to
+%        call polylinesimplify to remove sharp turns on the curve.
 %
 % output:
 %    leftpt: the equal-spaced landmark nodes on the left-half (p2-p1)
@@ -35,6 +37,10 @@ function [leftpt,leftcurve,rightpt,rightcurve]=slicesurf3(node,elem,p1,p2,p3,ste
 %
 
 fullcurve=slicesurf(node, elem, [p1;p2;p3]);
+if(nargin>=7 && minangle>0)
+    fullcurve=polylinesimplify(fullcurve,minangle);
+end
+
 [fulllen, fullcurve]=polylinelen(fullcurve, p1,p3,p2);
 
 [leftlen,  leftcurve]=polylinelen(fullcurve, p2, p1);

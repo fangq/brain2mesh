@@ -30,7 +30,7 @@ initpoints=[
 
 headsurf=volface(elem(:,1:4));
 tic;
-[landmarks, curves]=brain1020(node, headsurf, initpoints, 10,5,'cztol',1e-8);
+[landmarks, curves]=brain1020(node, headsurf, initpoints, 10,5,'cztol',1e-8, 'minangle', 0.75*pi);
 toc
 view([-0.6 1.5 0.6]);
 

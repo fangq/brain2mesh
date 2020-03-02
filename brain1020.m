@@ -119,6 +119,8 @@ opt=varargin2struct(varargin{:});
 showplot=jsonopt('display',1,opt);
 baseplane=jsonopt('baseplane',1,opt);
 tol=jsonopt('cztol',1e-6,opt);
+dosimplify=jsonopt('minangle',0,opt);
+maxcziter=jsonopt('maxcziter',10,opt);
 
 % convert initpoints input to a 5x3 array
 if(isstruct(initpoints))
@@ -200,19 +202,24 @@ lastcz=[1 1 1]*inf;
 cziter=0;
 
 %% Find cz that bisects cm and sm curves within a tolerance, using UI 10-10 approach
-while(norm(initpoints(5,:)-lastcz)>tol && cziter<10)
+while(norm(initpoints(5,:)-lastcz)>tol && cziter<maxcziter)
     %% Step 1: nz, iz and cz0 to determine saggital reference curve
     
     nsagg=slicesurf(node, face, initpoints([1,2,5],:));
-
     %% Step 1.1: get cz1 as the mid-point between iz and nz
     [slen, nsagg]=polylinelen(nsagg, initpoints(1,:), initpoints(2,:), initpoints(5,:));
+    if(dosimplify)
+        [nsagg, slen]=polylinesimplify(nsagg,dosimplify);
+    end
     [idx, weight, cz]=polylineinterp(slen, sum(slen)*0.5, nsagg);
     initpoints(5,:)=cz(1,:);
 
     %% Step 1.2: lpa, rpa and cz1 to determine coronal reference curve, update cz1
     curves.cm=slicesurf(node, face, initpoints([3,4,5],:));
     [len, curves.cm]=polylinelen(curves.cm, initpoints(3,:), initpoints(4,:), initpoints(5,:));
+    if(dosimplify)
+        [curves.cm, len]=polylinesimplify(curves.cm,dosimplify);
+    end
     [idx, weight, coro]=polylineinterp(len, sum(len)*0.5, curves.cm);
     lastcz=initpoints(5,:);
     initpoints(5,:)=coro(1,:);
@@ -235,6 +242,9 @@ end
 
 curves.sm=slicesurf(node, face, initpoints([1,2,5],:));
 [slen, curves.sm]=polylinelen(curves.sm, initpoints(1,:), initpoints(2,:), initpoints(5,:));
+if(dosimplify)
+    [curves.sm, slen]=polylinesimplify(curves.sm,dosimplify);
+end
 [idx, weight, sagg]=polylineinterp(slen, sum(slen)*(perc1:perc2:(100-perc1))*0.01, curves.sm);
 landmarks.sm=sagg;           % fpz, fz, cz, pz, oz
 
