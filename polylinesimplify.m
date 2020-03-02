@@ -1,4 +1,26 @@
 function [newnodes, len]=polylinesimplify(nodes, minangle)
+%
+% [newnodes, len]=polylinesimplify(nodes, minangle)
+%
+% Calculate a simplified polyline by removing nodes where two adjacent
+% segment have an angle less than a specified limit
+%
+% author: Qianqian Fang (q.fang at neu.edu)
+%
+% input:
+%    node: an N x 3 array defining each vertex of the polyline in
+%          sequential order
+%    minangle:(optional) minimum segment angle in radian, if not given, use
+%          0.75*pi
+%
+% output:
+%    newnodes: the updated node list; start/end will not be removed
+%    len: the length of each segment between the start and the end points
+%
+%
+% -- this function is part of brain2mesh toolbox (http://mcx.space/brain2mesh)
+%    License: GPL v3 or later, see LICENSE.txt for details
+%
 
 if(nargin<2)
     minangle=0.75*pi;

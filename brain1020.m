@@ -33,8 +33,17 @@ function [landmarks, curves, initpoints]=brain1020(node, face, initpoints, perc1
 %           'display' : [1] or 0, if set to 1, plot landmarks and curves
 %           'cztol' : [1e-6], the tolerance for searching cz that bisects
 %                   saggital and coronal reference curves
+%           'maxcziter' : [10] the maximum number of iterations to update
+%                   cz to bisect both cm and sm curves
 %           'baseplane' : [1] or 0, if set to 1, create the reference
 %                   curves along the primary control points (nz,iz,lpa,rpa)
+%           'minangle' : [0] if set to a positive number, this specifies
+%                   the minimum angle (radian) between adjacent segments in
+%                   the reference curves to avoid sharp turns (such as the
+%                   dipping near ear cavities), this parameter will be
+%                   passed to polylinesimplify to simplify the curve first.
+%                   Please be note that the landmarks generated with
+%                   simplified curves may not land exactly on the surface.
 %
 % == Output ==
 %    landmarks: a structure storing all computed landmarks. The subfields
