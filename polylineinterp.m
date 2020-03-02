@@ -14,7 +14,7 @@ function [idx, weight, newnodes]=polylineinterp(polylen, len, nodes)
 %         and so on
 %    len: a single scalar, or a vector of scalars, specifying the total
 %         length
-%    nodes: if nodes is an array with a row-number equats to length(polylen)+1,
+%    nodes: if nodes is an array with a row-number equal to length(polylen)+1,
 %         we assume each row defines a coordinate for the nodes along the
 %         polyline
 %
@@ -22,8 +22,8 @@ function [idx, weight, newnodes]=polylineinterp(polylen, len, nodes)
 %    idx: the indices of the polyline segments, starting from 1, where each
 %         length defined in len ends; if len> sum(polylen), nan is
 %         returned; if len<0, the weight will be a negative value.
-%    weight: the interpolation weight between 0-1 towards the start node 
-%         of the containing segment; the weight for the end-node is 1-weight
+%    weight: the interpolation weight between 0-1 towards the end node 
+%         of the containing segment; the weight for the start-node is 1-weight
 %    newnodes: the interpolated node positions at the end of the len
 %
 % example:
