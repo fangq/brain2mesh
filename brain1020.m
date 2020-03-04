@@ -50,7 +50,8 @@ function [landmarks, curves, initpoints]=brain1020(node, face, initpoints, perc1
 %          include two sections: 
 %          1) 'nz','iz','lpa','rpa','cz': individual 3D positions defining
 %             the 5 principle reference points: nasion (nz), inion (in),
-%             left-ear-lobe (lpa), right-ear-lobe (rpa) and vertex (cz)
+%             left-pre-auricular-point (lpa), right-pre-auricular-point 
+%             (rpa) and vertex (cz)
 %          2) landmarks along specific cross-sections, each cross section
 %             may contain more than 1 position. The cross-sections are
 %             named in the below format:
@@ -163,7 +164,7 @@ if(isempty(initpoints) || size(initpoints,1)<5)
         plotmesh(initpoints,'gs', 'LineWidth',4);
     end
     idx=size(initpoints,1)+1;
-    landmarkname={'Nasion','Inion','Left-ear-lobe','Right-ear-lobe','Vertex/Cz','Done'};
+    landmarkname={'Nasion','Inion','Left-pre-auricular-point','Right-pre-auricular-point','Vertex/Cz','Done'};
     title(sprintf('Rotate the mesh, select data cursor, click on P%d: %s',idx, landmarkname{idx}));
     rotate3d('on');
     set(datacursormode(hf),'UpdateFcn',@myupdatefcn);
@@ -350,7 +351,7 @@ if(~isempty(pt) && ismember(pos,pt,'rows'))
 end
 targetup=get(get(event_obj,'Target'),'parent');
 idx=size(pt,1)+2;
-landmarkname={'Nasion','Inion','Left-ear-lobe','Right-ear-lobe','Vertex/Cz','Done'};
+landmarkname={'Nasion','Inion','Left-pre-auricular-point','Right-pre-auricular-point','Vertex/Cz','Done'};
 title(sprintf('Rotate the mesh, select data cursor, click on P%d: %s',idx, landmarkname{idx}));
 set(targetup,'userdata',struct('pos',pos));
 pt=[pt;pos];
