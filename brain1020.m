@@ -17,8 +17,8 @@ function [landmarks, curves, initpoints]=brain1020(node, face, initpoints, perc1
 %          for the exterior (scalp) surface; a 4-column array defines the
 %          tetrahedral mesh of the full head.
 %    initpoints:(optional) one can provide the 3-D coordinates of the below
-%          5 landmarks: nz, iz, lpa, rpa, cz
-%          (Cz). initpoints can be a struct with the above landmark names
+%          5 landmarks: nz, iz, lpa, rpa, cz0 (cz0 is the initial guess of cz)
+%          initpoints can be a struct with the above landmark names
 %          as subfield, or a 5x3 array definining these points in the above
 %          mentioned order (one can use the output landmarks as initpoints)
 %    perc1:(optional) the percentage of geodesic distance towards the rim of 
@@ -40,9 +40,9 @@ function [landmarks, curves, initpoints]=brain1020(node, face, initpoints, perc1
 %           'minangle' : [0] if set to a positive number, this specifies
 %                   the minimum angle (radian) between adjacent segments in
 %                   the reference curves to avoid sharp turns (such as the
-%                   dipping near ear cavities), this parameter will be
+%                   dips near ear canals), this parameter will be
 %                   passed to polylinesimplify to simplify the curve first.
-%                   Please be note that the landmarks generated with
+%                   Please be noted that the landmarks generated with
 %                   simplified curves may not land exactly on the surface.
 %
 % == Output ==
@@ -51,7 +51,8 @@ function [landmarks, curves, initpoints]=brain1020(node, face, initpoints, perc1
 %          1) 'nz','iz','lpa','rpa','cz': individual 3D positions defining
 %             the 5 principle reference points: nasion (nz), inion (in),
 %             left-pre-auricular-point (lpa), right-pre-auricular-point 
-%             (rpa) and vertex (cz)
+%             (rpa) and vertex (cz) - cz is updated from initpoints to bisect
+%             the saggital and coronal ref. curves.
 %          2) landmarks along specific cross-sections, each cross section
 %             may contain more than 1 position. The cross-sections are
 %             named in the below format:
@@ -98,7 +99,8 @@ function [landmarks, curves, initpoints]=brain1020(node, face, initpoints, perc1
 %
 %  Anh Phong Tran, Shijie Yan and Qianqian Fang, "Improving model-based
 %  fNIRS analysis using mesh-based anatomical and light-transport models,"
-%  Neurophotonics, 7(1), 015008, URL: http://dx.doi.org/10.1117/1.NPh.7.1.015008
+%  Neurophotonics, 7(1), 015008, 2020 
+%  URL: http://dx.doi.org/10.1117/1.NPh.7.1.015008
 %
 %
 % -- this function is part of brain2mesh toolbox (http://mcx.space/brain2mesh)
@@ -136,7 +138,7 @@ maxcziter=jsonopt('maxcziter',10,opt);
 if(isstruct(initpoints))
     initpoints=struct('nz', initpoints.nz(:).','iz', initpoints.iz(:).',...
                      'lpa',initpoints.lpa(:).','rpa',initpoints.rpa(:).',...
-		             'cz', initpoints.cz(:).');
+		     'cz', initpoints.cz(:).');
     landmarks=initpoints;
     if(exist('struct2array','file'))
         initpoints=struct2array(initpoints);
@@ -241,14 +243,15 @@ end
 
 % set the finalized cz to output
 landmarks.cz=initpoints(5,:);
-[idx, weight, coro]=polylineinterp(len, sum(len)*(perc1:perc2:(100-perc1))*0.01, curves.cm);
-landmarks.cm=coro;                 % t7, c3, cz, c4, t8
 
 if(showplot)
     disp(initpoints);
 end
 
 %% Step 2: subdivide saggital (sm) and coronal (cm) ref curves
+
+[idx, weight, coro]=polylineinterp(len, sum(len)*(perc1:perc2:(100-perc1))*0.01, curves.cm);
+landmarks.cm=coro;                 % t7, c3, cz, c4, t8
 
 curves.sm=slicesurf(node, face, initpoints([1,2,5],:));
 [slen, curves.sm]=polylinelen(curves.sm, initpoints(1,:), initpoints(2,:), initpoints(5,:));
