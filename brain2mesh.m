@@ -108,6 +108,7 @@ dorelabel=jsonopt('dorelabel',0,cfg);
 doairseg=jsonopt('doairseg',1,cfg);
 threshold=jsonopt('threshold',0.5,cfg);
 smooth=jsonopt('smooth',0,cfg);
+surfonly=jsonopt('surfonly',false,cfg);
 
 segname=fieldnames(density);
 
@@ -382,7 +383,7 @@ for loop = 1:2
     %% The final mesh is generated here with the desired properties
     cmdopt = sprintf('-A -pq%fa%f',qratio,maxvol);
     %node(:,4) = sizefield(:).*ones(length(node(:,1)),1);
-    [brain_n,brain_el,brain_f] = s2m(node,face,1.0,maxvol,'tetgen1.5',[],[],cmdopt);
+    [brain_n,brain_el] = s2m(node,face,1.0,maxvol,'tetgen1.5',[],[],cmdopt);
 
     [label2, label_brain_el] = unique(brain_el(:,5)); 
     label_centroid2=meshcentroid(brain_n,brain_el(label_brain_el,1:4));
@@ -484,3 +485,7 @@ if dorelabel == 1 && (isfield(tpm,'skull') && isfield(tpm,'scalp'))
 end
 
 brain_el(:,5) = 6 - brain_el(:,5);
+
+if(nargout>2)
+    brain_f=layersurf(brain_el);
+end
