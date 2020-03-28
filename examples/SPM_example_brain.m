@@ -16,6 +16,8 @@ end
 
 %% call brain2mesh to create multi-layered brain mesh; cfg.smooth performs 10-iter. surface smoothing 
 cfg.dotruncate = 1;
+%cfg.smooth=8; % apply smoothing to all surfaces, use a struct to smooth each
+%cfg.radbound=struct('scalp',10,'skull',10,'csf',10,'gm',5,'wm',5); % set mesh density per layer
 tic
 [node,elem,face] = brain2mesh(seg, cfg);
 toc

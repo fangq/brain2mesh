@@ -108,7 +108,7 @@ dorelabel=jsonopt('dorelabel',0,cfg);
 doairseg=jsonopt('doairseg',1,cfg);
 threshold=jsonopt('threshold',0.5,cfg);
 smooth=jsonopt('smooth',0,cfg);
-surfonly=jsonopt('surfonly',false,cfg);
+surfonly=jsonopt('surfonly',0,cfg);
 
 segname=fieldnames(density);
 
@@ -184,33 +184,23 @@ end
 %% Grayscale/Binary extractions of the surface meshes for the different
 % tissues
 
-[wm_n,wm_f] = v2s(p_wm,threshold,opt(1),'cgalsurf');
-[pial_n,pial_f] = v2s(p_pial,threshold,opt(2),'cgalsurf');
+thresh=0.5;
+if(~isstruct(threshold))
+    thresh=threshold;
+end
+[wm_n,wm_f] = v2s(p_wm,jsonopt('wm',thresh,threshold),opt(1),'cgalsurf');
+[pial_n,pial_f] = v2s(p_pial,jsonopt('gm',thresh,threshold),opt(2),'cgalsurf');
 [wm_n,wm_f]=meshcheckrepair(wm_n,wm_f(:,1:3),'isolated');
 [pial_n,pial_f]=meshcheckrepair(pial_n,pial_f(:,1:3),'isolated');
 
 if(isfield(tpm,'csf'))
-    [csf_n,csf_f] = v2s(p_csf,threshold,opt(3),'cgalsurf');
+    [csf_n,csf_f] = v2s(p_csf,jsonopt('csf',thresh,threshold),opt(3),'cgalsurf');
     [csf_n,csf_f]=meshcheckrepair(csf_n,csf_f(:,1:3),'isolated');
-end
-
-if(smooth>0)
-    wm_n=sms(wm_n,wm_f,smooth,0.5,'lowpass');
-    pial_n=sms(pial_n,pial_f,smooth,0.5,'lowpass');
-    [wm_n,wm_f]=meshcheckrepair(wm_n,wm_f(:,1:3),'meshfix');
-    [pial_n,pial_f]=meshcheckrepair(pial_n,pial_f(:,1:3),'meshfix');
-
-    if(isfield(tpm,'csf'))
-        csf_n=sms(csf_n,csf_f,smooth,0.5,'lowpass');
-        [csf_n,csf_f]=meshcheckrepair(csf_n,csf_f(:,1:3),'meshfix');
-    end
 end
 
 if isfield(tpm,'skull')
     optskull=struct('radbound',radbound.skull,'maxnode',maxnode);
-    [bone_n,bone_f] = v2s(p_bone,threshold,optskull,'cgalsurf');
-    %[bone_n,bone_f]=meshcheckrepair(bone_n,bone_f(:,1:3),'isolated');
-    %bone_n=sms(bone_n,bone_f,smooth,0.5,'lowpass');
+    [bone_n,bone_f] = v2s(p_bone,jsonopt('skull',thresh,threshold),optskull,'cgalsurf');
 
     [bone_node,el_bone] = s2m(bone_n,bone_f,1.0,maxvol,'tetgen1.5',[],[],'-A');
     for i = 1:length(unique(el_bone(:,5)))
@@ -232,9 +222,56 @@ if isfield(tpm,'skull')
 end
 if isfield(tpm,'scalp')
     optscalp=struct('radbound',radbound.scalp,'maxnode',maxnode);
-    [skin_n,skin_f] = v2s(p_skin,threshold,optscalp,'cgalsurf');
-    %[skin_n,skin_f]=meshcheckrepair(skin_n,skin_f(:,1:3),'isolated');
-    %skin_n=sms(skin_n,skin_f,smooth,0.5,'lowpass');
+    [skin_n,skin_f] = v2s(p_skin,jsonopt('scalp',thresh,threshold),optscalp,'cgalsurf');
+end
+if(isstruct(smooth) || smooth>0)
+    scount=0;
+    if(~isstruct(smooth))
+        scount=smooth;
+    end
+    if(jsonopt('wm',scount,smooth)>0)
+        wm_n=sms(wm_n,wm_f(:,1:3),jsonopt('wm',scount,smooth),0.5,'lowpass');
+        [wm_n,wm_f]=meshcheckrepair(wm_n,wm_f(:,1:3),'meshfix');
+    end
+    if(jsonopt('gm',scount,smooth)>0)
+        pial_n=sms(pial_n,pial_f(:,1:3),jsonopt('gm',scount,smooth),0.5,'lowpass');
+        [pial_n,pial_f]=meshcheckrepair(pial_n,pial_f(:,1:3),'meshfix');
+    end
+    if(isfield(tpm,'csf') && jsonopt('csf',scount,smooth)>0)
+        csf_n=sms(csf_n,csf_f(:,1:3),jsonopt('csf',scount,smooth),0.5,'lowpass');
+        [csf_n,csf_f]=meshcheckrepair(csf_n,csf_f(:,1:3),'meshfix');
+    end
+    if(isfield(tpm,'skull') && jsonopt('skull',scount,smooth)>0)
+        bone_n=sms(bone_n,bone_f(:,1:3),jsonopt('skull',scount,smooth),0.5,'lowpass');
+        [bone_n,bone_f]=meshcheckrepair(bone_n,bone_f(:,1:3),'meshfix');
+    end
+    if(isfield(tpm,'scalp') && jsonopt('scalp',scount,smooth)>0)
+        skin_n=sms(skin_n,skin_f(:,1:3),jsonopt('scalp',scount,smooth),0.5,'lowpass');
+        [skin_n,skin_f]=meshcheckrepair(skin_n,skin_f(:,1:3),'meshfix');
+    end
+end
+
+if(surfonly==1)
+    wm_f(:,4)=1;
+    pial_f(:,4)=2;
+    [brain_n,brain_el]=mergemesh(wm_n,wm_f,pial_n,pial_f);
+    if(isfield(tpm,'csf'))
+        csf_f(:,4)=3;
+        [brain_n,brain_el]=mergemesh(brain_n,brain_el,csf_n,csf_f);
+        if(isfield(tpm,'skull'))
+            bone_f(:,4)=4;
+            [brain_n,brain_el]=mergemesh(brain_n,brain_el,bone_n,bone_f);
+            if(isfield(tpm,'scalp'))
+                skin_f(:,4)=5;
+                [brain_n,brain_el]=mergemesh(brain_n,brain_el,skin_n,skin_f);
+            end
+        end
+    end
+    [labels,ia,ib]=unique(brain_el(:,4));
+    labels=5:-1:(5-length(labels)+1);
+    brain_el(:,4)=labels(ib);
+    brain_f=[];
+    return;
 end
 
 %% Main loop for the meshing pipeline to combine the individual surface
@@ -275,6 +312,12 @@ for loop = 1:2
     end
     final_surf_n=surf_n;
     final_surf_f=surf_f;
+    if(surfonly==2)
+        brain_n=final_surf_n;
+        brain_el=final_surf_f;
+        brain_f=[];
+        return;
+    end
     %% If the whole head option is deactivated, the cut is made at the base of the brain using a box cutting
     if (dotruncate==1)
         dim=max(surf_n);
@@ -288,7 +331,12 @@ for loop = 1:2
         [nbox,fbox]=removeisolatednode(nbox,fbox);
         [final_surf_n,final_surf_f] = surfboolean(nbox,fbox(:,[1 3 2]),'first',surf_n,surf_f);
     end
-    
+    if(surfonly==3)
+        brain_n=final_surf_n;
+        brain_el=final_surf_f;
+        brain_f=[];
+        return;
+    end
     %% Generates a coarse tetrahedral mesh of the combined tissues
     try
         [final_n,final_e] = s2m(final_surf_n,final_surf_f,1.0,maxvol,'tetgen1.5',[],[],'-A');
