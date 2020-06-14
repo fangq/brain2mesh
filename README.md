@@ -18,16 +18,16 @@ volumes and surfaces into a high-quality multi-layered tetrahedral brain/full he
 The details of this toolbox is described in the paper listed in the [Reference](#reference) section.
 
 This tool does not handle the segmentation of MRI scans, but examples of how commonly 
-encountered segmented datasets can be used to create meshes are available under the "examples" folder.
+encountered segmented datasets can be used to create meshes are available under the `examples` folder.
 
 The Brain2Mesh toolbox is also extensively dependent on:
 1. Iso2Mesh toolbox (http://iso2mesh.sf.net), not included, download at https://github.com/fangq/iso2mesh
-2. MATLAB Image-Processing toolbox (such as imfill, imdilate)
-3. intriangulation.m (by Adam Aitkenhead and Johannes Korsawe)
+2. MATLAB Image-Processing toolbox (such as `imfill`, `imdilate`)
+3. `intriangulation.m` (by Adam Aitkenhead and Johannes Korsawe)
 
 ## Overview of the functions
 
-The function "brain2mesh.m" handles the conversion of segmented volumes into high-quality 3D meshes. 
+The function `brain2mesh` handles the conversion of segmented volumes into high-quality 3D meshes. 
 It takes an 4D array as input, with different assumptions as to the number of layers. Typically, the layers
 are assumed to contain: white matter (WM), grey matter (GM), cerebrospinal fluid (CSF), bone and scalp.
 It also is able to handle inputs missing a bone segmentation, and missing bone+scalp segmentation. 
@@ -38,7 +38,12 @@ FreeSurfer and BrainSuite. There also exists series of available atlas databases
 In a near future release, scripts will be made available to accomodate the combination of segmented surface meshes
 such as the ones produced in FreeSurfer and BrainSuite as part of the input data.
 
-Your acknowledgement of brain2mesh in your publications or presentations 
+Another function `brain1020` provides an automated interface to compute head landmarks (10-20/10-5 systems 
+or user-customizable divisions). Users can either interactively select 5 initial landmarks (nasion, inion, 
+left and right ear-lobes, i.e. LPA/RPA, and vertex, i.e. CZ), the function automatically computes all brain
+landmarks on the scalp surface using user-specified density.
+
+Your acknowledgement of Brain2Mesh in your publications or presentations 
 would be greatly appreciated by the authors of this toolbox. The citation 
 information can be found in the Introduction section.
 
