@@ -1,4 +1,4 @@
-# Brain2mesh: a one-liner for human brain 3D mesh generation
+# Brain2mesh: a one-liner for 3D brain mesh generation
 
 * Version: 0.8
 * Project Maintainer: Qianqian Fang <q.fang at neu.edu>
