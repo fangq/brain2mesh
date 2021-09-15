@@ -118,7 +118,7 @@ imfill3d=str2func(imfillstr);
 
 if isstruct(seg)
     tpm = seg;
-elseif(ndim(seg)==4)
+elseif(ndims(seg)==4)
     for i=1:size(seg,4)
         tpm.(segname{i})=seg(:,:,:,i);
     end
