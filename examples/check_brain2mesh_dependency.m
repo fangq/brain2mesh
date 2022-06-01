@@ -9,3 +9,5 @@ end
 if(~exist('nii2jnii','file'))
     error('Missing dependency. You must download and addpath to iso2mesh toolbox, URL: https://github.com/fangq/iso2mesh')
 end
+
+disp('all dependencies are present. brain2mesh is ready to run');

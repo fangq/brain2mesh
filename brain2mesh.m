@@ -52,9 +52,15 @@ function [brain_n,brain_el,brain_f] = brain2mesh(seg,varargin)
 %          cfg.doairseg: 0 or [1]. Within the skull layer, additional segmentations can be found. 
 %             By default, these regions are merged to the skull because they can be ambiguously be
 %             vessels or air. When the option 1 is chosen, these regions are labeled as air instead.
-%          cfg.dotruncate: 0 or [1]. by default, the mesh is truncated a few pixel in the 
-%             +z direction below the lowest pixel containing CSF to focus on the brain areas. 
+%          cfg.dotruncate: ['-z' or 1], or one of +x/-x/+y/-y/+z/-z, 0 to
+%             disable. by default, brain2mesh assumes the neck is
+%             positioned at the -z direction of the volume, the mesh is
+%             truncated by cfg.marginsize voxels in the -z direction below
+%             the lowest pixel containing CSF to focus on the brain areas.
 %             A value of 0 gives a complete head mesh. 
+%          cfg.marginsize: [4]. when dotruncate is set, this flag
+%             determines how many voxels below the CSF mesh to truncate
+%             towards the neck.
 %          cfg.imfill: ['imfill'], 'mri_fillholes' etc, the function name
 %             for 3D image hole-filling function, default is imfill,
 %             requires MATLAB image processing toolbox or octave-image
@@ -109,6 +115,7 @@ doairseg=jsonopt('doairseg',1,cfg);
 threshold=jsonopt('threshold',0.5,cfg);
 smooth=jsonopt('smooth',0,cfg);
 surfonly=jsonopt('surfonly',0,cfg);
+marginsize=jsonopt('marginsize',4,cfg);
 
 segname=fieldnames(density);
 
@@ -319,17 +326,29 @@ for loop = 1:2
         return;
     end
     %% If the whole head option is deactivated, the cut is made at the base of the brain using a box cutting
-    if (dotruncate==1)
+    if (dotruncate==1 || ischar(dotruncate))
         dim=max(surf_n);
         if isfield(tpm,'csf')
             dim2 = min(csf_n);
         else
             dim2 = min(surf_n);
         end
-        [nbox,fbox,ebox]=meshabox([-1 -1 dim2(3)+4.1],[dim(1)+1 dim(2)+1 dim(3)+1],500);
+        if(dotruncate == 1 || strcmp(dotruncate,'-z'))
+            [nbox,fbox,ebox]=meshabox([-1 -1 dim2(3)+marginsize],[dim(1)+1 dim(2)+1 dim(3)+1],500);
+        elseif(strcmp(dotruncate,'-y'))
+            [nbox,fbox,ebox]=meshabox([-1 dim2(2)+marginsize -1],[dim(1)+1 dim(2)+1 dim(3)+1],500);
+        elseif(strcmp(dotruncate,'-x'))
+            [nbox,fbox,ebox]=meshabox([dim2(1)+marginsize -1 -1],[dim(1)+1 dim(2)+1 dim(3)+1],500);
+        elseif(strcmp(dotruncate,'+z'))
+            [nbox,fbox,ebox]=meshabox([-1 -1 -1],[dim(1)+1 dim(2)+1 dim2(3)-marginsize],500);
+        elseif(strcmp(dotruncate,'+y'))
+            [nbox,fbox,ebox]=meshabox([-1 -1 -1],[dim(1)+1 dim2(2)-marginsize dim(3)+1],500);
+        elseif(strcmp(dotruncate,'+x'))
+            [nbox,fbox,ebox]=meshabox([-1 -1 -1],[dim2(1)-marginsize dim(2)+1 dim(3)+1],500);
+        end
         fbox=volface(ebox);
         [nbox,fbox]=removeisolatednode(nbox,fbox);
-        [final_surf_n,final_surf_f] = surfboolean(nbox,fbox(:,[1 3 2]),'first',surf_n,surf_f);
+        [final_surf_n,final_surf_f] = surfboolean(nbox,fbox,'first',surf_n,surf_f);
     end
     if(surfonly==3)
         brain_n=final_surf_n;
@@ -349,7 +368,7 @@ for loop = 1:2
     end
 
     %% Removes the elements that are part of the box, but not the brain/head
-    if (dotruncate == 1)
+    if (dotruncate == 1 || ischar(dotruncate))
         [maxval, M] = max(final_n);
         k = find(final_e(:,1:4)==M(3),1);
         final_e = final_e(final_e(:,5)~=final_e(rem(k,length(final_e(:,1))),5),:);
