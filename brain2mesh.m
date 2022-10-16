@@ -134,7 +134,7 @@ else
 end
 
 % normalizing segmentation inputs to 0-1
-normalizer=@(x) double(x)*( ~isinteger(x) + (isinteger(x))*(1/double(cast(inf,class(x)))) );
+normalizer=@(x) double(x)*( ~isinteger(x) + (isinteger(x))*(1/double(max(x(:)))) );
 tpm=structfun(normalizer, tpm,'UniformOutput',false);
 
 opt=struct;
