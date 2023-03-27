@@ -1,6 +1,6 @@
-function [p,e0]=raysurf(node,elem,p0,v0,e0)
+function [p,e0]=ray2surf(node,elem,p0,v0,e0)
 %
-% [p,e0]=raysurf(node,elem,p0,v0,e0)
+% [p,e0]=ray2surf(node,elem,p0,v0,e0)
 %
 % Determine the entry position and element for a ray to intersect a mesh
 %
