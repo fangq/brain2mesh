@@ -34,7 +34,8 @@ if(isempty(idx))
 else
     t=t(idx);
     if(e0=='>')
-        idx1=find(t>=0);
+%         idx1=find(t>=0);
+        idx1=find(t>=1e-10);
     elseif(e0=='<')
         idx1=find(t<=0);
     elseif(isnan(e0) || e0=='-')
