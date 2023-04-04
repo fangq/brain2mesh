@@ -134,6 +134,38 @@ tol=jsonopt('cztol',1e-6,opt);
 dosimplify=jsonopt('minangle',0,opt);
 maxcziter=jsonopt('maxcziter',10,opt);
 
+if(nargin >=2 && ...
+     ((isstruct(initpoints) && ~isfield(initpoints, 'iz')) ...
+  || (~isstruct(initpoints) && size(initpoints,1)==3)))
+   
+    if(isstruct(initpoints))
+        nz=initpoints.nz(:).';
+        lpa=initpoints.lpa(:).';
+        rpa=initpoints.rpa(:).';
+    else
+        nz=initpoints(1,:);
+        lpa=initpoints(2,:);
+        rpa=initpoints(3,:);
+    end
+    % This assume nz, lpa, rpa, iz are on the same plane to find iz on the head
+    % surface
+    pa_mid = mean([lpa;rpa]);
+    v0 = pa_mid-nz;
+    [iz, e0] = ray2surf(node, face, nz, v0, '>');
+
+    % To find cz, we assume that the vector from iz nz midpoint to cz is perpendicular
+    % to the plane defined by nz, lpa, and rpa.
+    iznz_mid = (nz+iz)*0.5;
+    v0 = cross(nz-rpa, lpa-rpa);
+    [cz, e0] = ray2surf(node, face, iznz_mid, v0, '>');
+    if(isstruct(initpoints))
+        initpoints.iz=iz;
+        initpoints.cz=cz;
+    else
+        initpoints=[initpoints(1,:); iz; initpoints(2:3,:); cz];
+    end
+end
+
 % convert initpoints input to a 5x3 array
 if(isstruct(initpoints))
     initpoints=struct('nz', initpoints.nz(:).','iz', initpoints.iz(:).',...
