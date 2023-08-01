@@ -323,7 +323,7 @@ end
 
 idxcz=closestnode(landmarks.sm,landmarks.cz);
 
-skipcount=max(floor(10/perc2),1);
+skipcount=floor(10/perc2);
 
 for i=1:size(landmarks.aal,1)-skipcount
     step=(perc2*25)*0.1*(1+((perc2<20 + perc2<10) && i==size(landmarks.aal,1)-skipcount));
