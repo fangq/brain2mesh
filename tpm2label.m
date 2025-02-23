@@ -1,4 +1,4 @@
-function [vol, names]=tpm2label(seg, segorder)
+function [vol, names] = tpm2label(seg, segorder)
 %
 % vol=tpm2label(seg)
 %   or
@@ -28,21 +28,21 @@ function [vol, names]=tpm2label(seg, segorder)
 %    License: GPL v3 or later, see LICENSE.txt for details
 %
 
-mask=seg;
-names={};
-if(isstruct(seg))
-    if(nargin>1)
-        seg=orderfields(seg,segorder);
+mask = seg;
+names = {};
+if (isstruct(seg))
+    if (nargin > 1)
+        seg = orderfields(seg, segorder);
     end
-    names=fieldnames(seg);
-    mask=cellfun(@(x) seg.(x), names,'UniformOutput',false);
+    names = fieldnames(seg);
+    mask = cellfun(@(x) seg.(x), names, 'UniformOutput', false);
 end
-if(iscell(mask))
-    mask=cat(ndims(mask{1})+1,mask{:});
+if (iscell(mask))
+    mask = cat(ndims(mask{1}) + 1, mask{:});
 end
-if(~isnumeric(mask))
+if (~isnumeric(mask))
     error('input must be a cell/struct array with numeric elements of matching dimensions');
 end
 
-[newmask, vol]=max(mask,[],ndims(mask));
-vol=vol .* (sum(mask,ndims(mask))>0);
+[newmask, vol] = max(mask, [], ndims(mask));
+vol = vol .* (sum(mask, ndims(mask)) > 0);
