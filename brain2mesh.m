@@ -61,8 +61,8 @@ function [brain_n,brain_el,brain_f] = brain2mesh(seg,varargin)
 %          cfg.marginsize: [4]. when dotruncate is set, this flag
 %             determines how many voxels below the CSF mesh to truncate
 %             towards the neck.
-%          cfg.imfill: ['imfill'], 'mri_fillholes' etc, the function name
-%             for 3D image hole-filling function, default is imfill,
+%          cfg.imfill: ['fillholes3d'], 'imfill', 'mri_fillholes' etc, the function name
+%             for 3D image hole-filling function, default is fillholes3d; using imfill
 %             requires MATLAB image processing toolbox or octave-image
 %             toolbox
 %
@@ -92,9 +92,6 @@ end
 if(~exist('v2m','file'))
     error('Missing dependency. You must download and addpath to Iso2Mesh Toolbox, URL: https://github.com/fangq/iso2mesh')
 end
-if(~exist('imfill','file'))
-    error('Missing dependency. You must install MATLAB image processing toolbox')
-end
 if(~exist('intriangulation','file'))
     error('Missing dependency. You must download and addpath to intriangulation.m, URL: https://www.mathworks.com/matlabcentral/fileexchange/43381-intriangulation-vertices-faces-testp-heavytest')
 end
@@ -119,7 +116,7 @@ marginsize=jsonopt('marginsize',4,cfg);
 
 segname=fieldnames(density);
 
-imfillstr=jsonopt('imfill','imfill',cfg);
+imfillstr=jsonopt('imfill','fillholes3d',cfg);
 imfillparam='holes';
 imfill3d=str2func(imfillstr);
 
@@ -156,36 +153,36 @@ dim = size(tpm.wm);
 tpm.wm = imfill3d(tpm.wm>0,imfillparam);
 p_wm = tpm.wm;
 p_pial = p_wm+tpm.gm;
-p_pial = max(p_pial,imdilate(p_wm,cube3));
+p_pial = max(p_pial,volgrow(p_wm,1,cube3));
 p_pial = imfill3d(p_pial>0,imfillparam);
 expandedGM = p_pial - tpm.wm - tpm.gm;
-expandedGM = imdilate(expandedGM,cube3);
+expandedGM = volgrow(expandedGM,1,cube3);
 
 if(isfield(tpm,'csf'))
     p_csf = p_pial+tpm.csf;
     p_csf(p_csf>1) = 1;
-    p_csf = max(p_csf,imdilate(p_pial,cube3));
+    p_csf = max(p_csf,volgrow(p_pial,1,cube3));
     expandedCSF = p_csf - tpm.wm - tpm.gm - tpm.csf - expandedGM;
-    expandedCSF = imdilate(expandedCSF,cube3);
+    expandedCSF = volgrow(expandedCSF,1,cube3);
 end
 
 if isfield(tpm,'skull') && isfield(tpm,'scalp') && isfield(tpm,'csf')
     p_bone = p_csf + tpm.skull;
     p_bone(p_bone>1) = 1;
-    p_bone = max(p_bone,imdilate(p_csf,cube3));
+    p_bone = max(p_bone,volgrow(p_csf,1,cube3));
     p_skin = p_bone + tpm.scalp;
     p_skin(p_skin>1) = 1;
-    p_skin = max(p_skin,imdilate(p_bone,cube3));
+    p_skin = max(p_skin,volgrow(p_bone,1,cube3));
 	expandedSkull = p_bone - tpm.wm - tpm.gm - tpm.csf - tpm.skull - expandedCSF - expandedGM;
-    expandedSkull = imdilate(expandedSkull,cube3);
+    expandedSkull = volgrow(expandedSkull,1,cube3);
 elseif isfield(tpm,'scalp') && ~isfield(tpm,'skull')
     p_skin = p_csf + tpm.scalp;
     p_skin(p_skin>1) = 1;
-    p_skin = max(p_skin,imdilate(p_csf,cube3));
+    p_skin = max(p_skin,volgrow(p_csf,1,cube3));
 elseif isfield(tpm,'skull') && ~isfield(tpm,'scalp')
     p_bone = p_csf + tpm.skull;
     p_bone(p_bone>1) = 1;
-    p_bone = max(p_bone,imdilate(p_csf,cube3));
+    p_bone = max(p_bone,volgrow(p_csf,1,cube3));
 end
 
 %% Grayscale/Binary extractions of the surface meshes for the different
