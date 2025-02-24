@@ -148,7 +148,7 @@ end
 function [OUTPUT, correctionLIST] = VOXELISEinternal(testx, testy, testz, meshXYZ)
 
 % Prepare logical array to hold the logical data:
-OUTPUT = false(size(testx, 1), 1);
+OUTPUT = zeros(size(testx, 1), 1);
 
 % Identify the min and max x,y coordinates of the mesh:
 meshZmin = min(min(meshXYZ(:, 3, :)));

@@ -136,7 +136,7 @@ tpm = structfun(normalizer, tpm, 'UniformOutput', false);
 
 opt = struct;
 
-for i = 1:size(fieldnames(tpm))
+for i = 1:length(fieldnames(tpm))
     opt(i).maxnode = maxnode;
     if (isfield(radbound, segname{i}))
         opt(i).radbound = radbound.(segname{i});

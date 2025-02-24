@@ -1,0 +1,69 @@
+name: Brain2Mesh CI
+
+on: [push, pull_request]
+
+jobs:
+  octave_test:
+    name: Octave tests
+    strategy:
+      # provided octave versions: ubuntu-20.04 = 5.2, ubuntu-22.04 = 6.4, macos-13 = 8.1, windows-2019 = 7.3
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04, macos-13, windows-2019]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+      - name: Install dependencies
+        run: |
+          [[ "$RUNNER_OS" == "Linux" ]] && sudo apt-get update && sudo apt-get install -y octave
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            brew install octave
+          fi
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            curl --retry 3 -kL http://cdimage.debian.org/mirror/gnu.org/gnu/octave/windows/octave-7.3.0-w64-64.7z --output octave_7.3.0.7z
+            7z x octave_7.3.0.7z -ooctave -y
+            echo "$PWD/octave/octave-7.3.0-w64-64/mingw64/bin" >> $GITHUB_PATH
+          fi
+      - name: Setup iso2mesh
+        run: |
+          wget https://github.com/fangq/iso2mesh/archive/refs/heads/master.zip -O master.zip
+          unzip master.zip
+      - name: Run octave test
+        run: |
+          octave-cli --version
+          octave-cli --eval "addpath('./iso2mesh-master'); addpath(pwd); cd examples; SPM_example_brain"
+          octave-cli --eval "addpath('./iso2mesh-master'); addpath(pwd); cd examples; SPM_example_wholehead"
+
+  matlab_test:
+    name: MATLAB test
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macos-13, windows-2019]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v1
+        with:
+          release: R2022a
+      - name: Setup iso2mesh
+        run: |
+          wget https://github.com/fangq/iso2mesh/archive/refs/heads/master.zip -O master.zip
+          unzip master.zip
+      - name: Run MATLAB brain example
+        uses: matlab-actions/run-command@v1
+        with:
+          command: addpath('./iso2mesh-master'); addpath(pwd); cd examples; SPM_example_brain
+      - name: Run MATLAB wholehead example
+        uses: matlab-actions/run-command@v1
+        with:
+          command: addpath('./iso2mesh-master'); addpath(pwd); cd examples; SPM_example_wholehead
