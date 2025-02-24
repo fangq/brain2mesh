@@ -32,7 +32,7 @@ jobs:
           fi
       - name: Setup iso2mesh
         run: |
-          wget https://github.com/fangq/iso2mesh/archive/refs/heads/master.zip -O master.zip
+          curl --retry 3 -kL https://github.com/fangq/iso2mesh/archive/refs/heads/master.zip -o master.zip
           unzip master.zip
           pwd
           ls -lt
