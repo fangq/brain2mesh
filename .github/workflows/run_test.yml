@@ -60,14 +60,12 @@ jobs:
       - name: Setup iso2mesh
         run: |
           curl --retry 3 -kL https://github.com/fangq/iso2mesh/archive/refs/heads/master.zip -o master.zip
-          unzip master.zip && rm -rf master.zip
-          curl --retry 3 -kL https://github.com/NeuroJSON/zmat/archive/refs/heads/master.zip -o master.zip
-          unzip master.zip && rm -rf master.zip
+          unzip master.zip
       - name: Run MATLAB brain example
         uses: matlab-actions/run-command@v1
         with:
-          command: addpath(pwd, [pwd filesep 'iso2mesh-master'], [pwd filesep 'zmat-master']); cd examples; SPM_example_brain
+          command: addpath(pwd, [pwd filesep 'iso2mesh-master']); cd examples; SPM_example_brain
       - name: Run MATLAB wholehead example
         uses: matlab-actions/run-command@v1
         with:
-          command: addpath(pwd, [pwd filesep 'iso2mesh-master'], [pwd filesep 'zmat-master']); cd examples; SPM_example_wholehead
+          command: addpath(pwd, [pwd filesep 'iso2mesh-master']); cd examples; SPM_example_wholehead
