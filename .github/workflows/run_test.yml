@@ -40,8 +40,8 @@ jobs:
           ls -lt
           ls iso2mesh-master
           octave-cli --version
-          octave-cli --eval "disp(pwd); disp(ls); addpath('iso2mesh-master'); addpath(pwd); cd examples; SPM_example_brain"
-          octave-cli --eval "addpath('iso2mesh-master'); addpath(pwd); cd examples; SPM_example_wholehead"
+          octave-cli --eval "disp(pwd); disp(ls); addpath([pwd filesep 'iso2mesh-master']); addpath(pwd); cd examples; SPM_example_brain"
+          octave-cli --eval "addpath([pwd filesep 'iso2mesh-master']); addpath(pwd); cd examples; SPM_example_wholehead"
 
   matlab_test:
     name: MATLAB test
@@ -63,13 +63,13 @@ jobs:
           curl --retry 3 -kL https://github.com/fangq/iso2mesh/archive/refs/heads/master.zip -o master.zip
           unzip master.zip
           pwd
-          ls -lt
+          ls
           ls iso2mesh-master
       - name: Run MATLAB brain example
         uses: matlab-actions/run-command@v1
         with:
-          command: addpath('./iso2mesh-master'); addpath(pwd); cd examples; SPM_example_brain
+          command: addpath([pwd filesep 'iso2mesh-master']); addpath(pwd); cd examples; SPM_example_brain
       - name: Run MATLAB wholehead example
         uses: matlab-actions/run-command@v1
         with:
-          command: addpath('./iso2mesh-master'); addpath(pwd); cd examples; SPM_example_wholehead
+          command: addpath([pwd filesep 'iso2mesh-master']); addpath(pwd); cd examples; SPM_example_wholehead
