@@ -34,8 +34,10 @@ jobs:
         run: |
           curl --retry 3 -kL https://github.com/fangq/iso2mesh/archive/refs/heads/master.zip -o master.zip
           unzip master.zip && rm -rf master.zip
-          curl --retry 3 -kL https://github.com/NeuroJSON/zmat/archive/refs/heads/master.zip -o master.zip
-          unzip master.zip && rm -rf master.zip
+          if [[ "$RUNNER_OS" != "Windows" ]]; then
+              curl --retry 3 -kL https://github.com/NeuroJSON/zmat/archive/refs/heads/master.zip -o master.zip
+              unzip master.zip && rm -rf master.zip
+          fi
       - name: Run octave test
         run: |
           octave-cli --version
