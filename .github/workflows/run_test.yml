@@ -39,7 +39,7 @@ jobs:
               unzip master.zip && rm -rf master.zip
           fi
           cd iso2mesh-master
-          perl -pi -e 's/isosurface\(levelmask, 0.5\)/isosurface(binsurface)/g' vol2surf.m
+          perl -pi -e 's/isosurface\(levelmask, 0.5\)/binsurface(levelmask)/g'
       - name: Run octave test
         run: |
           octave-cli --version
