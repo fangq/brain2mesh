@@ -38,8 +38,6 @@ jobs:
               curl --retry 3 -kL https://github.com/NeuroJSON/zmat/archive/refs/heads/master.zip -o master.zip
               unzip master.zip && rm -rf master.zip
           fi
-          cd iso2mesh-master
-          perl -pi -e 's/isosurface\(levelmask, 0.5\)/binsurface(levelmask)/g'
       - name: Run octave test
         run: |
           octave-cli --version
