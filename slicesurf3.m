@@ -1,4 +1,4 @@
-function [leftpt, leftcurve, rightpt, rightcurve] = slicesurf3(node, elem, p1, p2, p3, step, minangle)
+function [leftpt, leftcurve, rightpt, rightcurve] = slicesurf3(node, elem, p1, p2, p3, step, minangle, varargin)
 %
 % [leftpt,leftcurve,rightpt,rightcurve]=slicesurf3(node,elem,p1,p2,p3,step,minangle)
 %
@@ -36,7 +36,13 @@ function [leftpt, leftcurve, rightpt, rightcurve] = slicesurf3(node, elem, p1, p
 %    License: GPL v3 or later, see LICENSE.txt for details
 %
 
-fullcurve = slicesurf(node, elem, [p1; p2; p3]);
+opt = varargin2struct(varargin{:});
+
+[fullcurve, curveloop] = slicesurf(node, elem, [p1; p2; p3]);
+if (jsonopt('maxloop', 0, opt))
+    fullcurve = fullcurve(maxloop(curveloop), :);
+end
+
 if (nargin >= 7 && minangle > 0)
     fullcurve = polylinesimplify(fullcurve, minangle);
 end

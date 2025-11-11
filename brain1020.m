@@ -185,9 +185,6 @@ if (size(face, 2) >= 4)
     face = volface(face(:, 1:4));
 end
 
-% remove nodes not located in the surface
-[node, face] = removeisolatednode(node, face);
-
 % if initpoints is not sufficient, ask user to interactively select nz, iz, lpa, rpa and cz first
 if (isempty(initpoints) || size(initpoints, 1) < 5)
     hf = figure;
@@ -229,6 +226,32 @@ if (size(initpoints, 1) >= 5)
                        'cz', initpoints(5, :));
 end
 
+if (jsonopt('clean', 1, opt))
+    % find the bounding box of the top part of the head, and remove all
+    % other triangles
+    p0 = landmarks;
+    v_ni = p0.nz - p0.iz;
+    v_lr = p0.lpa - p0.rpa;
+    v_cz0 = cross(v_ni, v_lr);
+    v_cz0 = v_cz0 / norm(v_cz0);
+    v_cn = p0.cz - p0.nz;
+    d_czlpa = dot(p0.cz - p0.lpa, v_cz0);
+    d_cznz = dot(v_cn, v_cz0);
+    if (abs(d_czlpa) > abs(d_cznz)) % if lpa is further away from cz than nz
+        p0.nz = p0.nz - v_cz0 * (abs(d_czlpa) - abs(d_cznz)); % move nz to the same level as lpa, can also add rpa
+        p0.iz = p0.iz - v_cz0 * (abs(d_czlpa) - abs(d_cznz)); % move nz to the same level as lpa, can also add rpa
+    end
+    v_cz = d_cznz * v_cz0;
+    bbx0 = p0.nz - 0.6 * v_lr - 0.1 * v_cz + 0.1 * v_ni;
+    c0 = meshcentroid(node, face);
+    dz = dot(repmat(v_cz0, size(face, 1), 1), c0 - repmat(bbx0, size(face, 1), 1), 2);
+    face = face(dz > 0, :);
+    clear p0 bbx0 c0 dz;
+else
+    % remove nodes not located in the surface
+    [node, face] = removeisolatednode(node, face);
+end
+
 % at this point, initpoints contains {nz, iz, lpa, rpa, cz0}
 % plot the head mesh
 if (showplot)
@@ -249,7 +272,9 @@ cziter = 0;
 while (norm(initpoints(5, :) - lastcz) > tol && cziter < maxcziter)
     %% Step 1: nz, iz and cz0 to determine saggital reference curve
 
-    nsagg = slicesurf(node, face, initpoints([1, 2, 5], :));
+    [nsagg, curveloop] = slicesurf(node, face, initpoints([1, 2, 5], :));
+    nsagg = nsagg(maxloop(curveloop), :);
+
     %% Step 1.1: get cz1 as the mid-point between iz and nz
     [slen, nsagg] = polylinelen(nsagg, initpoints(1, :), initpoints(2, :), initpoints(5, :));
     if (dosimplify)
@@ -259,7 +284,9 @@ while (norm(initpoints(5, :) - lastcz) > tol && cziter < maxcziter)
     initpoints(5, :) = cz(1, :);
 
     %% Step 1.2: lpa, rpa and cz1 to determine coronal reference curve, update cz1
-    curves.cm = slicesurf(node, face, initpoints([3, 4, 5], :));
+    [curves.cm, curveloop] = slicesurf(node, face, initpoints([3, 4, 5], :));
+    curves.cm = curves.cm(maxloop(curveloop), :);
+
     [len, curves.cm] = polylinelen(curves.cm, initpoints(3, :), initpoints(4, :), initpoints(5, :));
     if (dosimplify)
         [curves.cm, len] = polylinesimplify(curves.cm, dosimplify);
@@ -285,7 +312,9 @@ end
 [idx, weight, coro] = polylineinterp(len, sum(len) * (perc1:perc2:(100 - perc1)) * 0.01, curves.cm);
 landmarks.cm = coro;                 % t7, c3, cz, c4, t8
 
-curves.sm = slicesurf(node, face, initpoints([1, 2, 5], :));
+[curves.sm, curveloop] = slicesurf(node, face, initpoints([1, 2, 5], :));
+curves.sm = curves.sm(maxloop(curveloop), :);
+
 [slen, curves.sm] = polylinelen(curves.sm, initpoints(1, :), initpoints(2, :), initpoints(5, :));
 if (dosimplify)
     [curves.sm, slen] = polylinesimplify(curves.sm, dosimplify);
@@ -295,11 +324,11 @@ landmarks.sm = sagg;           % fpz, fz, cz, pz, oz
 
 %% Step 3: fpz, t7 and oz to determine left 10% axial reference curve
 
-[landmarks.aal, curves.aal, landmarks.apl, curves.apl] = slicesurf3(node, face, landmarks.sm(1, :), landmarks.cm(1, :), landmarks.sm(end, :), perc2 * 2);
+[landmarks.aal, curves.aal, landmarks.apl, curves.apl] = slicesurf3(node, face, landmarks.sm(1, :), landmarks.cm(1, :), landmarks.sm(end, :), perc2 * 2, 0, 'maxloop', 1);
 
 %% Step 4: fpz, t8 and oz to determine right 10% axial reference curve
 
-[landmarks.aar, curves.aar, landmarks.apr, curves.apr] = slicesurf3(node, face, landmarks.sm(1, :), landmarks.cm(end, :), landmarks.sm(end, :), perc2 * 2);
+[landmarks.aar, curves.aar, landmarks.apr, curves.apr] = slicesurf3(node, face, landmarks.sm(1, :), landmarks.cm(end, :), landmarks.sm(end, :), perc2 * 2, 0, 'maxloop', 1);
 
 %% show plots of the landmarks
 if (showplot)
@@ -326,7 +355,7 @@ skipcount = floor(10 / perc2);
 
 for i = 1:size(landmarks.aal, 1) - skipcount
     step = (perc2 * 25) * 0.1 * (1 + ((perc2 < 20 + perc2 < 10) && i == size(landmarks.aal, 1) - skipcount));
-    [landmarks.(sprintf('cal_%d', i)), leftpart, landmarks.(sprintf('car_%d', i)), rightpart] = slicesurf3(node, face, landmarks.aal(i, :), landmarks.sm(idxcz - i, :), landmarks.aar(i, :), step);
+    [landmarks.(sprintf('cal_%d', i)), leftpart, landmarks.(sprintf('car_%d', i)), rightpart] = slicesurf3(node, face, landmarks.aal(i, :), landmarks.sm(idxcz - i, :), landmarks.aar(i, :), step, 0, 'maxloop', 1);
     if (showplot)
         plotmesh(leftpart, 'k-', 'LineWidth', 1);
         plotmesh(rightpart, 'k-', 'LineWidth', 1);
@@ -340,7 +369,7 @@ end
 
 for i = 1:size(landmarks.apl, 1) - skipcount
     step = (perc2 * 25) * 0.1 * (1 + ((perc2 < 20 + perc2 < 10) && i == size(landmarks.apl, 1) - skipcount));
-    [landmarks.(sprintf('cpl_%d', i)), leftpart, landmarks.(sprintf('cpr_%d', i)), rightpart] = slicesurf3(node, face, landmarks.apl(i, :), landmarks.sm(idxcz + i, :), landmarks.apr(i, :), step);
+    [landmarks.(sprintf('cpl_%d', i)), leftpart, landmarks.(sprintf('cpr_%d', i)), rightpart] = slicesurf3(node, face, landmarks.apl(i, :), landmarks.sm(idxcz + i, :), landmarks.apr(i, :), step, 0, 'maxloop', 1);
     if (showplot)
         plotmesh(leftpart, 'k-', 'LineWidth', 1);
         plotmesh(rightpart, 'k-', 'LineWidth', 1);
@@ -353,8 +382,8 @@ end
 %% Step 7: create the axial cuts across priciple ref. points: left: nz, lpa, iz, right: nz, rpa, iz
 
 if (baseplane && perc2 <= 10)
-    [landmarks.paal, curves.paal, landmarks.papl, curves.papl] = slicesurf3(node, face, landmarks.nz, landmarks.lpa, landmarks.iz, perc2 * 2);
-    [landmarks.paar, curves.paar, landmarks.papr, curves.papr] = slicesurf3(node, face, landmarks.nz, landmarks.rpa, landmarks.iz, perc2 * 2);
+    [landmarks.paal, curves.paal, landmarks.papl, curves.papl] = slicesurf3(node, face, landmarks.nz, landmarks.lpa, landmarks.iz, perc2 * 2, 0, 'maxloop', 1);
+    [landmarks.paar, curves.paar, landmarks.papr, curves.papr] = slicesurf3(node, face, landmarks.nz, landmarks.rpa, landmarks.iz, perc2 * 2, 0, 'maxloop', 1);
     if (showplot)
         plotmesh(curves.paal, 'k-', 'LineWidth', 1);
         plotmesh(curves.paar, 'k-', 'LineWidth', 1);
