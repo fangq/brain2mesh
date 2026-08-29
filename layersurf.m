@@ -49,6 +49,9 @@ dounique = jsonopt('unique', false, opt);
 innermost = jsonopt('innermost', 0, opt);
 occurence = jsonopt('occurence', 'first', opt);
 
+if (size(elem, 2) < 5)
+    elem(:, 5) = 1;
+end
 labels = sort(unique(elem(:, 5)));
 face = [];
 for i = 1:length(labels)
